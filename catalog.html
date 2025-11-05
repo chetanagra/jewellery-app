@@ -1,64 +1,198 @@
-<!doctype html><html><head>
-<meta charset="utf-8"><title>Catalog — YOUR BRAND</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="stylesheet" href="assets/css/styles.css" />
-</head><body>
-<header class="sticky top-0 z-40 bg-white/90 backdrop-blur border-b">
-  <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-    <a href="index.html" class="text-xl font-bold">YOUR BRAND</a>
-    <nav class="hidden md:flex gap-6 text-sm">
-      <a href="catalog.html">Catalog</a><a href="gold-rate.html">Gold Rates</a><a href="about.html">About</a><a href="contact.html">Contact</a>
-    </nav>
-  </div>
-  <div id="rate-bar" class="text-center text-xs py-2"></div>
-</header>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Catalog — YOUR BRAND</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <style>
+    /* Optional: nicer focus & transitions */
+    .focus-ring:focus { outline: 2px solid #0ea5e9; outline-offset: 2px; }
+  </style>
+</head>
+<body class="bg-white text-slate-900">
+  <!-- Header -->
+  <header class="sticky top-0 z-40 bg-white/90 backdrop-blur border-b">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <a href="index.html" class="text-xl font-bold">YOUR BRAND</a>
+      <nav class="hidden md:flex gap-6 text-sm">
+        <a class="hover:text-slate-700" href="catalog.html">Catalog</a>
+        <a class="hover:text-slate-700" href="gold-rate.html">Gold Rates</a>
+        <a class="hover:text-slate-700" href="about.html">About</a>
+        <a class="hover:text-slate-700" href="contact.html">Contact</a>
+      </nav>
+    </div>
+    <div id="rate-bar" class="text-center text-xs py-2"></div>
+  </header>
 
-<main class="max-w-6xl mx-auto p-4">
-  <div class="flex gap-3 mb-4">
-    <input id="q" class="border p-2 flex-1 rounded-lg" placeholder="Search rings, bangles…" />
-    <select id="metal" class="border p-2 rounded-lg"><option value="">All metals</option><option>Gold</option><option>Silver</option><option>Diamond</option></select>
-    <select id="purity" class="border p-2 rounded-lg"><option value="">Purity</option><option>24K</option><option>22K</option><option>18K</option></select>
-  </div>
-  <div id="grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
-</main>
+  <!-- Main -->
+  <main class="max-w-6xl mx-auto p-4">
+    <!-- Filters -->
+    <div class="flex flex-col sm:flex-row gap-3 mb-4">
+      <input id="q" class="border p-2 rounded-lg flex-1 focus-ring" placeholder="Search rings, bangles, chains…" />
+      <select id="metal" class="border p-2 rounded-lg focus-ring">
+        <option value="">All metals</option>
+        <option value="Gold">Gold</option>
+        <option value="Silver">Silver</option>
+        <option value="Diamond">Diamond</option>
+      </select>
+      <select id="purity" class="border p-2 rounded-lg focus-ring">
+        <option value="">Purity</option>
+        <option value="24K">24K</option>
+        <option value="22K">22K</option>
+        <option value="18K">18K</option>
+      </select>
+      <select id="category" class="border p-2 rounded-lg focus-ring">
+        <option value="">All categories</option>
+        <option value="ring">Ring</option>
+        <option value="bangle">Bangle</option>
+        <option value="anklet">Anklet</option>
+        <option value="bracelet">Bracelet</option>
+        <option value="necklace">Necklace</option>
+        <option value="earring">Earring</option>
+        <option value="chain">Chain</option>
+        <option value="pendant">Pendant</option>
+      </select>
+    </div>
 
-<script>
-async function loadCSV(url){
-  const t = await (await fetch(url)).text();
-  const [head,...rows] = t.trim().split('\n').map(r=>r.split(','));
-  return rows.map(r=>Object.fromEntries(head.map((h,i)=>[h.trim(), r[i]?.trim()])));
-}
-(async ()=>{
-  const items = await loadCSV('data/products.csv');
-  const grid = document.getElementById('grid');
-  const q = document.getElementById('q'), metal = document.getElementById('metal'), purity = document.getElementById('purity');
-  function render(){
-    const term = q.value.toLowerCase();
-    grid.innerHTML='';
-    items.filter(x =>
-      (!metal.value || x.metal===metal.value) &&
-      (!purity.value || x.purity===purity.value) &&
-      (!term || Object.values(x).join(' ').toLowerCase().includes(term))
-    ).forEach(x=>{
-      const card = document.createElement('a');
-      card.href = `product.html?sku=${encodeURIComponent(x.sku)}`;
-      card.className = "block rounded-2xl shadow p-3 hover:shadow-lg transition";
-      card.innerHTML = `
-        <img src="${x.image}" alt="${x.name}" class="rounded-xl aspect-square object-cover w-full"/>
-        <h3 class="mt-2 font-semibold">${x.name}</h3>
-        <p class="text-sm text-slate-600">${x.metal} ${x.purity} • ${x.weight_g}g</p>`;
-      grid.appendChild(card);
-    });
-  }
-  [q,metal,purity].forEach(el=>el.addEventListener('input',render));
-  render();
-})();
-</script>
+    <!-- Grid -->
+    <div id="grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"></div>
 
-<script>
-fetch('data/rates.json').then(r=>r.json()).then(d=>{
-  document.getElementById('rate-bar').innerText =
-    `Gold 24K: ₹${d.gold24k}/g | 22K: ₹${d.gold22k}/g | Silver: ₹${d.silver}/g — Updated ${d.updated}`;
-});
-</script>
-</body></html>
+    <!-- Empty state -->
+    <div id="empty" class="hidden text-center text-slate-500 py-12">
+      No items match your filters.
+    </div>
+  </main>
+
+  <!-- CSV + Catalog script -->
+  <script>
+    // Robust CSV parser (handles quotes, commas, newlines)
+    function parseCSV(text) {
+      const rows = [];
+      let i = 0, cur = '', row = [], inQuotes = false;
+      while (i < text.length) {
+        const c = text[i];
+        if (c === '"') {
+          if (inQuotes && text[i+1] === '"') { cur += '"'; i++; }
+          else inQuotes = !inQuotes;
+        } else if (c === ',' && !inQuotes) { row.push(cur); cur = ''; }
+        else if ((c === '\n' || c === '\r') && !inQuotes) {
+          if (cur !== '' || row.length) { row.push(cur); rows.push(row); cur=''; row=[]; }
+        } else { cur += c; }
+        i++;
+      }
+      if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
+      return rows;
+    }
+
+    async function loadCSV(url){
+      const t = await (await fetch(url, {cache:'no-cache'})).text();
+      const parsed = parseCSV(t.trim());
+      const head = parsed[0].map(h=>h.trim());
+      return parsed.slice(1)
+        .filter(r=>r && r.length)  // skip blank lines
+        .map(r => Object.fromEntries(head.map((h,i)=>[h, (r[i]||'').trim()])));
+    }
+
+    // Helpers to derive display fields from sheet columns
+    function deriveMetal(karat, stone) {
+      const k = Number(karat||0);
+      if (k > 0) return 'Gold';
+      if ((stone||'').toLowerCase() === 'diamond') return 'Diamond';
+      return 'Silver';
+    }
+    function derivePurity(karat) {
+      const k = Number(karat||0);
+      if (k === 24) return '24K';
+      if (k === 22) return '22K';
+      if (k === 18) return '18K';
+      return '';
+    }
+
+    (async ()=>{
+      // Load products from CSV (synced via GitHub Action)
+      const raw = await loadCSV('data/products.csv');
+
+      // Normalize to a consistent shape
+      const items = raw.map(x => {
+        const metal = deriveMetal(x.karat, x.stone);
+        const purity = derivePurity(x.karat);
+        return {
+          id: x.id,
+          name: x.name,
+          category: (x.category||'').toLowerCase(),
+          karat: Number(x.karat||0),
+          purity,
+          metal,
+          weight_g: Number(x.weight_g||0),
+          making_percent: Number(x.making_percent||0),
+          price_override: x.price_override,
+          image_url: x.image_url || 'assets/img/placeholder.webp',
+          description: x.description || ''
+        };
+      });
+
+      // UI refs
+      const grid = document.getElementById('grid');
+      const empty = document.getElementById('empty');
+      const q = document.getElementById('q');
+      const metalSel = document.getElementById('metal');
+      const puritySel = document.getElementById('purity');
+      const catSel = document.getElementById('category');
+
+      function render(){
+        const term = (q.value || '').toLowerCase();
+        const m = metalSel.value;
+        const p = puritySel.value;
+        const c = (catSel.value || '').toLowerCase();
+
+        const filtered = items.filter(x =>
+          (!m || x.metal === m) &&
+          (!p || x.purity === p) &&
+          (!c || x.category === c) &&
+          (!term || (x.name + ' ' + x.category + ' ' + x.description).toLowerCase().includes(term))
+        );
+
+        if (!filtered.length) {
+          grid.innerHTML = '';
+          empty.classList.remove('hidden');
+          return;
+        }
+        empty.classList.add('hidden');
+
+        grid.innerHTML = filtered.map(x => `
+          <a href="product.html?id=${encodeURIComponent(x.id)}"
+             class="block rounded-2xl border hover:shadow transition overflow-hidden bg-white">
+            <img src="${x.image_url}" alt="${x.name}" loading="lazy"
+                 onerror="this.onerror=null;this.src='assets/img/placeholder.webp';"
+                 class="w-full aspect-square object-cover" />
+            <div class="p-3">
+              <h3 class="font-semibold truncate" title="${x.name}">${x.name}</h3>
+              <p class="text-sm text-slate-600">
+                ${x.metal}${x.purity ? ' ' + x.purity : ''} • ${x.weight_g || 0}g
+              </p>
+            </div>
+          </a>
+        `).join('');
+      }
+
+      [q, metalSel, puritySel, catSel].forEach(el => el.addEventListener('input', render));
+      render();
+    })();
+  </script>
+
+  <!-- Rates bar script -->
+  <script>
+    fetch('data/rates.json', {cache:'no-cache'})
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(d => {
+        document.getElementById('rate-bar').innerText =
+          `Gold 24K: ₹${d.gold24k}/g | 22K: ₹${d.gold22k}/g | Silver: ₹${d.silver}/g — Updated ${d.updated}`;
+      })
+      .catch(() => {
+        document.getElementById('rate-bar').innerText = 'Rates unavailable';
+      });
+  </script>
+</body>
+</html>

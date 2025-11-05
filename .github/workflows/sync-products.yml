@@ -1,8 +1,8 @@
 name: Sync products from Google Sheets
 
 on:
-  schedule:
-    - cron: "0 */4 * * *"   # every 4 hours
+  # schedule:
+    # - cron: "0 * * * *"   # every 1 hours
   workflow_dispatch:        # allow manual run
 
 permissions:
@@ -17,7 +17,7 @@ jobs:
       - name: Download CSV from Google Sheets
         run: |
           mkdir -p data
-          curl -L "https://docs.google.com/spreadsheets/d/<SHEET_ID>/pub?output=csv" -o data/products.csv
+          curl -L "https://docs.google.com/spreadsheets/d/1M33tSbXzEPlv08sO_jI-tMN1WWjVTz2tTiWLfOZHG4U/pub?output=csv" -o data/products.csv
           # Basic sanity check: must contain header 'id,'
           head -n 1 data/products.csv | grep -qi '^id,' || { echo "CSV header missing"; exit 1; }
 
