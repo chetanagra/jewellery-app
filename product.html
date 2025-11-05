@@ -1,64 +1,222 @@
-<!doctype html><html><head>
-<meta charset="utf-8"><title>Product — YOUR BRAND</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="stylesheet" href="assets/css/styles.css" />
-</head><body>
-<header class="sticky top-0 z-40 bg-white/90 backdrop-blur border-b">
-  <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-    <a href="index.html" class="text-xl font-bold">YOUR BRAND</a>
-    <nav class="hidden md:flex gap-6 text-sm">
-      <a href="catalog.html">Catalog</a><a href="gold-rate.html">Gold Rates</a><a href="about.html">About</a><a href="contact.html">Contact</a>
-    </nav>
-  </div>
-  <div id="rate-bar" class="text-center text-xs py-2"></div>
-</header>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Product — YOUR BRAND</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <style>
+    .btn { @apply px-4 py-2 rounded-xl; }
+  </style>
+</head>
+<body class="bg-white text-slate-900">
+  <!-- Header -->
+  <header class="sticky top-0 z-40 bg-white/90 backdrop-blur border-b">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <a href="index.html" class="text-xl font-bold">YOUR BRAND</a>
+      <nav class="hidden md:flex gap-6 text-sm">
+        <a class="hover:text-slate-700" href="catalog.html">Catalog</a>
+        <a class="hover:text-slate-700" href="gold-rate.html">Gold Rates</a>
+        <a class="hover:text-slate-700" href="about.html">About</a>
+        <a class="hover:text-slate-700" href="contact.html">Contact</a>
+      </nav>
+    </div>
+    <div id="rate-bar" class="text-center text-xs py-2"></div>
+  </header>
 
-<main class="max-w-6xl mx-auto p-4">
-  <div id="pd"></div>
-</main>
+  <!-- Main -->
+  <main class="max-w-6xl mx-auto p-4">
+    <div id="pd" class="mb-10"></div>
 
-<script>
-function get(q){ return new URLSearchParams(location.search).get(q); }
-async function loadCSV(url){
-  const t = await (await fetch(url)).text();
-  const [h,...r] = t.trim().split('\n').map(l=>l.split(','));
-  return r.map(row=>Object.fromEntries(h.map((k,i)=>[k.trim(), row[i]?.trim()])));
-}
-function rupee(n){return '₹'+Math.round(n).toLocaleString('en-IN');}
-
-(async ()=>{
-  const [items, rates] = await Promise.all([
-    loadCSV('data/products.csv'),
-    fetch('data/rates.json').then(r=>r.json())
-  ]);
-  const sku = get('sku'); const p = items.find(x=>x.sku===sku);
-  const rate24 = rates.gold24k;
-  const rate22 = rates.gold22k;
-  const rate = p.purity==='24K' ? rate24 : p.purity==='22K' ? rate22 : Math.round(rate24*0.75); // 18K approx
-  const base = Number(p.weight_g)*Number(rate);
-  const making = base*(Number(p.price_making_perc||0)/100);
-  const price = base+making;
-  document.getElementById('pd').innerHTML = `
-    <div class="grid md:grid-cols-2 gap-6">
-      <img src="${p.image}" alt="${p.name}" class="rounded-2xl w-full object-cover">
-      <div>
-        <h1 class="text-2xl font-bold">${p.name}</h1>
-        <p class="text-slate-600 my-2">Metal: ${p.metal} ${p.purity} • Weight: ${p.weight_g}g ${p.stone?('• Stone: '+p.stone):''}</p>
-        <div class="text-2xl font-semibold my-3">${rupee(price)}</div>
-        <p class="text-xs text-slate-500 mb-4">Indicative price from today’s rates.</p>
-        <div class="flex gap-3">
-          <a class="px-4 py-2 rounded-xl bg-black text-white" href="https://wa.me/91XXXXXXXXXX?text=I%20am%20interested%20in%20${encodeURIComponent(p.name)}%20(${p.sku})">Enquire on WhatsApp</a>
-          <a class="px-4 py-2 rounded-xl border" href="contact.html">Book visit</a>
-        </div>
+    <!-- New Arrivals -->
+    <section>
+      <div class="flex items-center justify-between mb-3">
+        <h2 class="text-lg font-semibold">New Arrivals</h2>
+        <a href="catalog.html" class="text-sm text-sky-600 hover:underline">View all</a>
       </div>
-    </div>`;
-})();
-</script>
+      <div id="new-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4"></div>
+      <div id="new-empty" class="hidden text-center text-slate-500 py-8">No new items to show.</div>
+    </section>
+  </main>
 
-<script>
-fetch('data/rates.json').then(r=>r.json()).then(d=>{
-  document.getElementById('rate-bar').innerText =
-    `Gold 24K: ₹${d.gold24k}/g | 22K: ₹${d.gold22k}/g | Silver: ₹${d.silver}/g — Updated ${d.updated}`;
-});
-</script>
-</body></html>
+  <!-- Utilities + Page Script -->
+  <script>
+    // ---- Robust CSV parser (handles quotes/commas/newlines)
+    function parseCSV(text) {
+      const rows = [];
+      let i = 0, cur = '', row = [], inQuotes = false;
+      while (i < text.length) {
+        const c = text[i];
+        if (c === '"') {
+          if (inQuotes && text[i+1] === '"') { cur += '"'; i++; }
+          else inQuotes = !inQuotes;
+        } else if (c === ',' && !inQuotes) { row.push(cur); cur = ''; }
+        else if ((c === '\n' || c === '\r') && !inQuotes) {
+          if (cur !== '' || row.length) { row.push(cur); rows.push(row); cur=''; row=[]; }
+        } else { cur += c; }
+        i++;
+      }
+      if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
+      return rows;
+    }
+
+    async function loadCSV(url){
+      const t = await (await fetch(url, {cache:'no-cache'})).text();
+      const parsed = parseCSV(t.trim());
+      const head = parsed[0].map(h=>h.trim());
+      return parsed.slice(1)
+        .filter(r => r && r.length && r.some(cell => (cell||'').trim() !== ''))
+        .map(r => Object.fromEntries(head.map((h,i)=>[h, (r[i]||'').trim()])));
+    }
+
+    function rupee(n){ return '₹' + Math.round(Number(n||0)).toLocaleString('en-IN'); }
+    function derivePurity(karat){
+      const k = Number(karat||0);
+      if (k === 24) return '24K';
+      if (k === 22) return '22K';
+      if (k === 18) return '18K';
+      return '';
+    }
+    function deriveMetal(karat, stone){
+      const k = Number(karat||0);
+      if (k > 0) return 'Gold';
+      if ((stone||'').toLowerCase() === 'diamond') return 'Diamond';
+      return 'Silver';
+    }
+    function getParam(q){ return new URLSearchParams(location.search).get(q); }
+
+    (async () => {
+      // Load data
+      const [itemsRaw, rates] = await Promise.all([
+        loadCSV('data/products.csv'),
+        fetch('data/rates.json', {cache:'no-cache'}).then(r=>r.json()).catch(()=>({gold24k:0,gold22k:0}))
+      ]);
+
+      // Normalize records
+      const items = itemsRaw.map(x => ({
+        id: x.id,
+        name: x.name,
+        category: (x.category||'').toLowerCase(),
+        karat: Number(x.karat||0),
+        purity: derivePurity(x.karat),
+        metal: deriveMetal(x.karat, x.stone),
+        weight_g: Number(x.weight_g||0),
+        making_percent: Number(x.making_percent||0),
+        stone: x.stone || '',
+        price_override: (x.price_override||'').trim(),
+        image_url: x.image_url || 'assets/img/placeholder.webp',
+        description: x.description || ''
+      }));
+
+      // Find selected product
+      const id = getParam('id');
+      const p = items.find(x => String(x.id) === String(id));
+      const pd = document.getElementById('pd');
+
+      if (!p) {
+        pd.innerHTML = `
+          <div class="text-center py-16">
+            <p class="text-xl font-semibold">Product not found</p>
+            <p class="text-slate-600 mt-2">It may have been moved or removed.</p>
+            <a href="catalog.html" class="inline-block mt-4 px-4 py-2 rounded-xl border">Back to catalog</a>
+          </div>`;
+        renderNewArrivals(items, id);
+        return;
+      }
+
+      // Price calculation
+      let unitRate; // ₹/g
+      if (p.price_override) {
+        // If override given, we display that and skip calculation
+        unitRate = null;
+      } else {
+        const rate24 = Number(rates.gold24k||0);
+        const rate22 = Number(rates.gold22k||0);
+        if (p.purity === '24K') unitRate = rate24;
+        else if (p.purity === '22K') unitRate = rate22;
+        else if (p.purity === '18K') unitRate = Math.round(rate24 * 0.75); // approx for 18K
+        else unitRate = rate22 || rate24; // fallback
+      }
+
+      const base = unitRate ? (p.weight_g * unitRate) : 0;
+      const making = unitRate ? (base * (p.making_percent/100)) : 0;
+      const computedPrice = unitRate ? (base + making) : Number(p.price_override);
+      const priceText = rupee(computedPrice);
+
+      // WhatsApp link (replace with your number)
+      const waNumber = '91XXXXXXXXXX';
+      const waMsg = `I am interested in ${p.name} (ID: ${p.id})`;
+      const waLink = `https://wa.me/${waNumber}?text=${encodeURIComponent(waMsg)}`;
+
+      // Render product
+      pd.innerHTML = `
+        <div class="grid md:grid-cols-2 gap-6">
+          <img src="${p.image_url}" alt="${p.name}" loading="lazy"
+               onerror="this.onerror=null;this.src='assets/img/placeholder.webp';"
+               class="rounded-2xl w-full object-cover aspect-square">
+          <div>
+            <h1 class="text-2xl font-bold">${p.name}</h1>
+            <p class="text-slate-600 my-2">
+              ${p.metal}${p.purity ? ' ' + p.purity : ''} • ${p.weight_g}g
+              ${p.stone ? (' • Stone: ' + p.stone) : ''}
+            </p>
+            <div class="text-2xl font-semibold my-3">${priceText}</div>
+            <p class="text-xs text-slate-500 mb-4">Indicative price based on current rates. Final invoice at store.</p>
+            <div class="flex gap-3">
+              <a class="px-4 py-2 rounded-xl bg-black text-white" href="${waLink}">Enquire on WhatsApp</a>
+              <a class="px-4 py-2 rounded-xl border" href="contact.html">Book visit</a>
+            </div>
+            <div class="mt-6 text-sm leading-6 text-slate-700 whitespace-pre-line">${p.description}</div>
+          </div>
+        </div>
+      `;
+
+      // Render New Arrivals (by highest ID, excluding current one)
+      renderNewArrivals(items, p.id);
+    })();
+
+    function renderNewArrivals(items, currentId) {
+      const grid = document.getElementById('new-grid');
+      const empty = document.getElementById('new-empty');
+
+      // Sort by numeric id desc (treat missing/NaN as very old)
+      const latest = items
+        .filter(x => String(x.id) !== String(currentId))
+        .sort((a,b) => (Number(b.id||0) - Number(a.id||0)))
+        .slice(0, 10);
+
+      if (!latest.length) {
+        grid.innerHTML = '';
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+
+      grid.innerHTML = latest.map(x => `
+        <a href="product.html?id=${encodeURIComponent(x.id)}"
+           class="block rounded-2xl border hover:shadow transition overflow-hidden bg-white">
+          <img src="${x.image_url}" alt="${x.name}" loading="lazy"
+               onerror="this.onerror=null;this.src='assets/img/placeholder.webp';"
+               class="w-full aspect-square object-cover" />
+          <div class="p-3">
+            <div class="font-medium truncate" title="${x.name}">${x.name}</div>
+            <div class="text-xs text-slate-600">${x.category || ''}</div>
+          </div>
+        </a>
+      `).join('');
+    }
+  </script>
+
+  <!-- Rates bar -->
+  <script>
+    fetch('data/rates.json', {cache:'no-cache'})
+      .then(r => r.ok ? r.json() : Promise.reject())
+      .then(d => {
+        document.getElementById('rate-bar').innerText =
+          `Gold 24K: ₹${d.gold24k}/g | 22K: ₹${d.gold22k}/g | Silver: ₹${d.silver}/g — Updated ${d.updated}`;
+      })
+      .catch(()=>{ document.getElementById('rate-bar').innerText = 'Rates unavailable'; });
+  </script>
+</body>
+</html>
