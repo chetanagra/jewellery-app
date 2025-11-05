@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jewellery Image Uploader</title>
+  <script src="https://widget.cloudinary.com/v2.0/global/all.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f8f8f8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    #uploader {
+      background: white;
+      padding: 2rem;
+      border-radius: 1rem;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    .url-box {
+      margin-top: 1rem;
+      word-break: break-all;
+      background: #f3f3f3;
+      padding: 1rem;
+      border-radius: .5rem;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div id="uploader">
+    <h2>Upload Jewellery Images</h2>
+    <button id="upload_widget" class="cloudinary-button">Upload</button>
+    <div id="result" class="url-box" style="display:none;"></div>
+  </div>
+
+  <script>
+    const cloudName = "dem9lpte6"; // e.g. chetanagra
+    const uploadPreset = "jwellery_designs"; // e.g. unsigned_upload
+
+    const myWidget = cloudinary.createUploadWidget(
+      {
+        cloudName: cloudName,
+        uploadPreset: uploadPreset,
+        sources: ['local', 'url', 'camera'],
+        multiple: false,
+        folder: "jewellery",
+        maxImageFileSize: 5000000, // 5 MB
+        resourceType: "image",
+        clientAllowedFormats: ["png", "jpg", "jpeg", "webp"],
+        showCompletedButton: true,
+        cropping: false
+      },
+      (error, result) => {
+        if (!error && result && result.event === "success") {
+          const imageUrl = result.info.secure_url;
+          const resultBox = document.getElementById("result");
+          resultBox.style.display = "block";
+          resultBox.innerHTML = `
+            ✅ Uploaded successfully!<br>
+            <strong>Copy this URL:</strong><br>
+            <code>${imageUrl}</code>
+          `;
+          console.log("Uploaded image URL:", imageUrl);
+        }
+      }
+    );
+
+    document.getElementById("upload_widget").addEventListener("click", function(){
+      myWidget.open();
+    }, false);
+  </script>
+</body>
+</html>
