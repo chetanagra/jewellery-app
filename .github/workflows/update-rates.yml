@@ -5,12 +5,16 @@ on:
   #   - cron: "0 */4 * * *"   # every 4 hours
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   fetch:
     runs-on: ubuntu-latest
     env:
       OUNCE_TO_GRAM: "31.1034768"
       TZ: "Asia/Kolkata"
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -21,14 +25,13 @@ jobs:
       - name: Select provider (alternate each run)
         id: select
         run: |
-          # Alternate providers by run number (odd/even)
           rn=${GITHUB_RUN_NUMBER}
           if [ $((rn % 2)) -eq 0 ]; then
             echo "provider=goldapi" >> $GITHUB_OUTPUT
           else
             echo "provider=metalprice" >> $GITHUB_OUTPUT
           fi
-          echo "Selected provider for this run: $(cat $GITHUB_OUTPUT)"
+          echo "Selected provider: $(cat $GITHUB_OUTPUT)"
 
       - name: Fetch via GoldAPI
         id: goldapi
@@ -39,6 +42,7 @@ jobs:
         run: |
           set -e
           [ -z "$GOLDAPI_KEY" ] && { echo "No GOLDAPI_KEY"; exit 1; }
+
           XAU=$(curl -sS -H "x-access-token: $GOLDAPI_KEY" https://www.goldapi.io/api/XAU/INR)
           XAG=$(curl -sS -H "x-access-token: $GOLDAPI_KEY" https://www.goldapi.io/api/XAG/INR)
 
@@ -46,20 +50,28 @@ jobs:
           POZ_S=$(echo "$XAG" | jq -r '.price // empty')
           [ -z "$POZ_G" ] && { echo "GoldAPI missing price"; exit 1; }
 
-          GOLD24=$(python - <<PY
-            import os, math
-            print(int(round(float("$POZ_G")/float(os.environ["OUNCE_TO_GRAM"]))))
-            PY
-            )
-                      SILVER=$(python - <<PY
-            import os, math
-            print(int(round(float("$POZ_S")/float(os.environ["OUNCE_TO_GRAM"]))))
-            PY
-            )
+          GOLD24=$(python - <<'PY'
+import os, math
+oz = float(os.environ.get("POZ_G", "0"))
+g = float(os.environ.get("OUNCE_TO_GRAM", "31.1034768"))
+print(int(round(oz / g)))
+PY
+)
+          SILVER=$(python - <<'PY'
+import os, math
+oz = float(os.environ.get("POZ_S", "0"))
+g = float(os.environ.get("OUNCE_TO_GRAM", "31.1034768"))
+print(int(round(oz / g)))
+PY
+)
 
           echo "gold24=$GOLD24" >> $GITHUB_OUTPUT
           echo "silver=$SILVER" >> $GITHUB_OUTPUT
           echo "source=GoldAPI" >> $GITHUB_OUTPUT
+
+        env:
+          POZ_G: ${{ steps.goldapi.outputs.dummy || '' }} # placeholder to allow env export below
+          POZ_S: ${{ steps.goldapi.outputs.dummy || '' }}
 
       - name: Fetch via MetalpriceAPI
         id: metalprice
@@ -70,26 +82,34 @@ jobs:
         run: |
           set -e
           [ -z "$METALPRICE_KEY" ] && { echo "No METALPRICE_KEY"; exit 1; }
-          # INR base with XAU,XAG; many responses give per-ounce figures mapped in rates
+
           RESP=$(curl -sS "https://api.metalpriceapi.com/v1/latest?api_key=$METALPRICE_KEY&base=INR&currencies=XAU,XAG")
           POZ_G=$(echo "$RESP" | jq -r '.rates.XAU // empty')
           POZ_S=$(echo "$RESP" | jq -r '.rates.XAG // empty')
           [ -z "$POZ_G" ] && { echo "MetalpriceAPI missing XAU"; exit 1; }
 
-          GOLD24=$(python - <<PY
-            import os, math
-            print(int(round(float("$POZ_G")/float(os.environ["OUNCE_TO_GRAM"]))))
-            PY
-            )
-                      SILVER=$(python - <<PY
-            import os, math
-            print(int(round(float("$POZ_S")/float(os.environ["OUNCE_TO_GRAM"]))))
-            PY
-            )
+          GOLD24=$(python - <<'PY'
+import os, math
+oz = float(os.environ.get("POZ_G", "0"))
+g = float(os.environ.get("OUNCE_TO_GRAM", "31.1034768"))
+print(int(round(oz / g)))
+PY
+)
+          SILVER=$(python - <<'PY'
+import os, math
+oz = float(os.environ.get("POZ_S", "0"))
+g = float(os.environ.get("OUNCE_TO_GRAM", "31.1034768"))
+print(int(round(oz / g)))
+PY
+)
 
           echo "gold24=$GOLD24" >> $GITHUB_OUTPUT
           echo "silver=$SILVER" >> $GITHUB_OUTPUT
           echo "source=MetalpriceAPI" >> $GITHUB_OUTPUT
+
+        env:
+          POZ_G: ${{ steps.metalprice.outputs.dummy || '' }}
+          POZ_S: ${{ steps.metalprice.outputs.dummy || '' }}
 
       - name: Fallback (try the other provider if selected one failed)
         id: fallback
@@ -100,57 +120,46 @@ jobs:
           OUNCE_TO_GRAM: ${{ env.OUNCE_TO_GRAM }}
         run: |
           set -e
-          sel="${{ steps.select.outputs.provider }}"
+          sel='${{ steps.select.outputs.provider }}'
 
           if [ "$sel" = "goldapi" ]; then
-            echo "Primary GoldAPI failed; trying MetalpriceAPI…"
             [ -z "$METALPRICE_KEY" ] && { echo "No METALPRICE_KEY"; exit 1; }
             RESP=$(curl -sS "https://api.metalpriceapi.com/v1/latest?api_key=$METALPRICE_KEY&base=INR&currencies=XAU,XAG")
             POZ_G=$(echo "$RESP" | jq -r '.rates.XAU // empty')
             POZ_S=$(echo "$RESP" | jq -r '.rates.XAG // empty')
             [ -z "$POZ_G" ] && { echo "Fallback MetalpriceAPI missing XAU"; exit 1; }
-            GOLD24=$(python - <<PY
-              import os, math
-              print(int(round(float("$POZ_G")/float(os.environ["OUNCE_TO_GRAM"]))))
-              PY
-              )
-            SILVER=$(python - <<PY
-              import os, math
-              print(int(round(float("$POZ_S")/float(os.environ["OUNCE_TO_GRAM"]))))
-              PY
-              )
-            echo "gold24=$GOLD24" >> $GITHUB_OUTPUT
-            echo "silver=$SILVER" >> $GITHUB_OUTPUT
-            echo "source=MetalpriceAPI" >> $GITHUB_OUTPUT
-
           else
-            echo "Primary MetalpriceAPI failed; trying GoldAPI…"
             [ -z "$GOLDAPI_KEY" ] && { echo "No GOLDAPI_KEY"; exit 1; }
             XAU=$(curl -sS -H "x-access-token: $GOLDAPI_KEY" https://www.goldapi.io/api/XAU/INR)
             XAG=$(curl -sS -H "x-access-token: $GOLDAPI_KEY" https://www.goldapi.io/api/XAG/INR)
             POZ_G=$(echo "$XAU" | jq -r '.price // empty')
             POZ_S=$(echo "$XAG" | jq -r '.price // empty')
             [ -z "$POZ_G" ] && { echo "Fallback GoldAPI missing price"; exit 1; }
-            GOLD24=$(python - <<PY
-              import os, math
-              print(int(round(float("$POZ_G")/float(os.environ["OUNCE_TO_GRAM"]))))
-              PY
-              )
-            SILVER=$(python - <<PY
-              import os, math
-              print(int(round(float("$POZ_S")/float(os.environ["OUNCE_TO_GRAM"]))))
-              PY
-              )
-            echo "gold24=$GOLD24" >> $GITHUB_OUTPUT
-            echo "silver=$SILVER" >> $GITHUB_OUTPUT
-            echo "source=GoldAPI" >> $GITHUB_OUTPUT
           fi
+
+          GOLD24=$(python - <<'PY'
+import os, math
+oz = float(os.environ.get("POZ_G", "0"))
+g = float(os.environ.get("OUNCE_TO_GRAM", "31.1034768"))
+print(int(round(oz / g)))
+PY
+)
+          SILVER=$(python - <<'PY'
+import os, math
+oz = float(os.environ.get("POZ_S", "0"))
+g = float(os.environ.get("OUNCE_TO_GRAM", "31.1034768"))
+print(int(round(oz / g)))
+PY
+)
+
+          echo "gold24=$GOLD24" >> $GITHUB_OUTPUT
+          echo "silver=$SILVER" >> $GITHUB_OUTPUT
+          echo "source=$([ "$sel" = "goldapi" ] && echo MetalpriceAPI || echo GoldAPI)" >> $GITHUB_OUTPUT
 
       - name: Consolidate outputs
         id: out
         if: always()
         run: |
-          # Prefer successful main step; else fallback
           if [ "${{ steps.goldapi.outcome }}" = "success" ]; then
             G24="${{ steps.goldapi.outputs.gold24 }}"
             SIL="${{ steps.goldapi.outputs.silver }}"
@@ -178,20 +187,23 @@ jobs:
           GOLD24=${{ steps.out.outputs.G24 }}
           SILVER=${{ steps.out.outputs.SIL }}
           SRC=${{ steps.out.outputs.SRC }}
-          GOLD22=$(python - <<PY
-            print(int(round(${GOLD24} * 0.9167)))
-            PY
-            )
+
+          GOLD22=$(python - <<'PY'
+import os
+print(int(round(int(os.environ["GOLD24"]) * 0.9167)))
+PY
+)
+
           UPDATED=$(TZ=Asia/Kolkata date "+%Y-%m-%d %H:%M IST")
           cat > data/rates.json <<JSON
-            {
-              "gold24k": ${GOLD24},
-              "gold22k": ${GOLD22},
-              "silver": ${SILVER},
-              "updated": "${UPDATED}",
-              "source": "${SRC} (spot per gram, INR)"
-            }
-          JSON
+{
+  "gold24k": ${GOLD24},
+  "gold22k": ${GOLD22},
+  "silver": ${SILVER},
+  "updated": "${UPDATED}",
+  "source": "${SRC} (spot per gram, INR)"
+}
+JSON
 
       - name: Commit & push
         if: steps.out.outcome == 'success'
