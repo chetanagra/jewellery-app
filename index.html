@@ -1,59 +1,144 @@
-<!doctype html><html><head>
-<meta charset="utf-8"><title>Home — YOUR BRAND</title>
-<meta name="description" content="Fine jewellery — gold, diamond, silver.">
-<script src="https://cdn.tailwindcss.com"></script>
-<link rel="stylesheet" href="assets/css/styles.css" />
-</head><body class="text-slate-900">
-<!-- Header with rate-bar (paste same header from step 3) -->
-<header class="sticky top-0 z-40 bg-white/90 backdrop-blur border-b">
-  <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-    <a href="index.html" class="text-xl font-bold tracking-wide">YOUR BRAND</a>
-    <nav class="hidden md:flex gap-6 text-sm">
-      <a href="catalog.html">Catalog</a>
-      <a href="gold-rate.html">Gold Rates</a>
-      <a href="about.html">About</a>
-      <a href="contact.html">Contact</a>
-    </nav>
-  </div>
-  <div id="rate-bar" class="text-center text-xs py-2"></div>
-</header>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Home — YOUR BRAND</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="Fine jewellery — gold, diamond, silver.">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="assets/css/styles.css" />
+</head>
+<body class="bg-white text-slate-900">
 
-<section class="max-w-6xl mx-auto px-4 py-10 grid md:grid-cols-2 gap-8 items-center">
-  <div>
-    <h1 class="text-3xl md:text-5xl font-semibold leading-tight">Elegant Gold & Diamond Jewellery</h1>
-    <p class="mt-4 text-slate-600">Handcrafted designs. Hallmarked purity. Transparent pricing linked to today’s gold rate.</p>
-    <div class="mt-6 flex gap-3">
-      <a href="catalog.html" class="px-5 py-3 rounded-xl bg-black text-white">Shop Catalog</a>
-      <a href="contact.html" class="px-5 py-3 rounded-xl border">Book a Visit</a>
+  <!-- Header -->
+  <header class="sticky top-0 z-40 bg-white/90 backdrop-blur border-b">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+      <a href="index.html" class="text-xl font-bold tracking-wide">YOUR BRAND</a>
+      <nav class="hidden md:flex gap-6 text-sm">
+        <a href="catalog.html" class="hover:text-slate-700">Catalog</a>
+        <a href="gold-rate.html" class="hover:text-slate-700">Gold Rates</a>
+        <a href="about.html" class="hover:text-slate-700">About</a>
+        <a href="contact.html" class="hover:text-slate-700">Contact</a>
+      </nav>
     </div>
-  </div>
-  <img src="assets/img/hero.jpg" class="rounded-2xl w-full object-cover" alt="Hero">
-</section>
+    <div id="rate-bar" class="text-center text-xs py-2"></div>
+  </header>
 
-<section class="max-w-6xl mx-auto px-4 py-10">
-  <h2 class="text-xl font-semibold mb-4">New Arrivals</h2>
-  <div id="featured" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
-</section>
+  <!-- Hero -->
+  <section class="max-w-6xl mx-auto px-4 py-10 grid md:grid-cols-2 gap-8 items-center">
+    <div>
+      <h1 class="text-3xl md:text-5xl font-semibold leading-tight">Elegant Gold & Diamond Jewellery</h1>
+      <p class="mt-4 text-slate-600">Handcrafted designs. Hallmarked purity. Transparent pricing linked to today’s gold rate.</p>
+      <div class="mt-6 flex gap-3">
+        <a href="catalog.html" class="px-5 py-3 rounded-xl bg-black text-white">Shop Catalog</a>
+        <a href="contact.html" class="px-5 py-3 rounded-xl border">Book a Visit</a>
+      </div>
+    </div>
+    <img src="assets/img/hero.jpg" class="rounded-2xl w-full object-cover" alt="Hero">
+  </section>
 
-<script>
-fetch('data/products.csv').then(r=>r.text()).then(t=>{
-  const [head,...rows]=t.trim().split('\n').map(l=>l.split(','));
-  const items=rows.slice(0,4).map(r=>Object.fromEntries(head.map((h,i)=>[h.trim(), r[i]?.trim()])));
-  const g=document.getElementById('featured');
-  items.forEach(x=>{
-    const a=document.createElement('a');
-    a.href=`product.html?sku=${encodeURIComponent(x.sku)}`;
-    a.className="block rounded-2xl shadow p-3 hover:shadow-lg transition";
-    a.innerHTML=`<img class="rounded-xl aspect-square object-cover w-full" src="${x.image}" alt="${x.name}"><h3 class="mt-2 font-semibold">${x.name}</h3><p class="text-sm text-slate-600">${x.metal} ${x.purity} • ${x.weight_g}g</p>`;
-    g.appendChild(a);
-  });
-});
-</script>
+  <!-- New Arrivals -->
+  <section class="max-w-6xl mx-auto px-4 py-10">
+    <h2 class="text-xl font-semibold mb-4">New Arrivals</h2>
+    <div id="featured" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+    <div id="featured-empty" class="hidden text-center text-slate-500 py-8">No items to show.</div>
+  </section>
 
-<script>
-fetch('data/rates.json').then(r=>r.json()).then(d=>{
-  document.getElementById('rate-bar').innerText=
-    `Gold 24K: ₹${d.gold24k}/g | 22K: ₹${d.gold22k}/g | Silver: ₹${d.silver}/g — Updated ${d.updated}`;
-});
-</script>
-</body></html>
+  <!-- Scripts -->
+  <script>
+    // Robust CSV parser (handles quotes/commas/newlines)
+    function parseCSV(text) {
+      const rows = [];
+      let i = 0, cur = '', row = [], inQuotes = false;
+      while (i < text.length) {
+        const c = text[i];
+        if (c === '"') {
+          if (inQuotes && text[i+1] === '"') { cur += '"'; i++; }
+          else inQuotes = !inQuotes;
+        } else if (c === ',' && !inQuotes) { row.push(cur); cur = ''; }
+        else if ((c === '\n' || c === '\r') && !inQuotes) {
+          if (cur !== '' || row.length) { row.push(cur); rows.push(row); cur=''; row=[]; }
+        } else { cur += c; }
+        i++;
+      }
+      if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
+      return rows;
+    }
+
+    async function loadCSV(url){
+      const t = await (await fetch(url, {cache:'no-cache'})).text();
+      const parsed = parseCSV(t.trim());
+      const head = parsed[0].map(h=>h.trim());
+      return parsed.slice(1)
+        .filter(r => r && r.length && r.some(cell => (cell||'').trim() !== ''))
+        .map(r => Object.fromEntries(head.map((h,i)=>[h, (r[i]||'').trim()])));
+    }
+
+    function purityFromKarat(k){
+      const n = Number(k||0);
+      if (n === 24) return '24K';
+      if (n === 22) return '22K';
+      if (n === 18) return '18K';
+      return '';
+    }
+    function metalFromRow(karat, stone){
+      const k = Number(karat||0);
+      if (k > 0) return 'Gold';
+      if ((stone||'').toLowerCase() === 'diamond') return 'Diamond';
+      return 'Silver';
+    }
+
+    (async () => {
+      // Rates bar
+      fetch('data/rates.json', {cache:'no-cache'})
+        .then(r => r.ok ? r.json() : Promise.reject())
+        .then(d => {
+          document.getElementById('rate-bar').innerText =
+            `Gold 24K: ₹${d.gold24k}/g | 22K: ₹${d.gold22k}/g | Silver: ₹${d.silver}/g — Updated ${d.updated}`;
+        })
+        .catch(()=>{ document.getElementById('rate-bar').innerText = 'Rates unavailable'; });
+
+      // New Arrivals (top by id desc)
+      const rows = await loadCSV('data/products.csv');
+      const items = rows.map(x => ({
+        id: x.id,
+        name: x.name,
+        category: (x.category||'').toLowerCase(),
+        karat: Number(x.karat||0),
+        purity: purityFromKarat(x.karat),
+        metal: metalFromRow(x.karat, x.stone),
+        weight_g: Number(x.weight_g||0),
+        image_url: x.image_url || 'assets/img/placeholder.webp',
+        description: x.description || ''
+      }));
+
+      const featuredEl = document.getElementById('featured');
+      const emptyEl = document.getElementById('featured-empty');
+
+      const newest = items
+        .sort((a,b) => (Number(b.id||0) - Number(a.id||0)))
+        .slice(0, 8); // show up to 8 newest
+
+      if (!newest.length) {
+        emptyEl.classList.remove('hidden');
+        return;
+      }
+
+      featuredEl.innerHTML = newest.map(x => `
+        <a href="product.html?id=${encodeURIComponent(x.id)}"
+           class="block rounded-2xl border hover:shadow transition overflow-hidden bg-white">
+          <img src="${x.image_url}" alt="${x.name}" loading="lazy"
+               onerror="this.onerror=null;this.src='assets/img/placeholder.webp';"
+               class="w-full aspect-square object-cover" />
+          <div class="p-3">
+            <h3 class="font-semibold truncate" title="${x.name}">${x.name}</h3>
+            <p class="text-sm text-slate-600">
+              ${x.metal}${x.purity ? ' ' + x.purity : ''} • ${x.weight_g || 0}g
+            </p>
+          </div>
+        </a>
+      `).join('');
+    })();
+  </script>
+</body>
+</html>
