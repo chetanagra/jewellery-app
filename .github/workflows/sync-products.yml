@@ -17,7 +17,7 @@ jobs:
       - name: Download CSV from Google Sheets
         run: |
           mkdir -p data
-          curl -L "https://docs.google.com/spreadsheets/d/1M33tSbXzEPlv08sO_jI-tMN1WWjVTz2tTiWLfOZHG4U/pub?output=csv" -o data/products.csv
+          curl -L "https://docs.google.com/spreadsheets/d/e/2PACX-1vTk_j3kcH8Z-ZrwCVlZQ0UfIZnIbapbYxlHdL99yEAMj8HzHEsORui7pbucjX9Idk9OJSRv0BhgJoDj/pub?gid=0&single=true&output=csv" -o data/products.csv
           # Basic sanity check: must contain header 'id,'
           head -n 1 data/products.csv | grep -qi '^id,' || { echo "CSV header missing"; exit 1; }
 
