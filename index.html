@@ -15,7 +15,7 @@
 <header class="sticky top-0 z-40 bg-white/90 backdrop-blur border-b">
   <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
     <a href="index.html" class="flex items-center gap-3 text-2xl font-serif text-yellow-800 tracking-wide">
-      <img src="assets/img/logo.png" alt="Brand Logo" class="h-10 w-10 rounded-full shadow-md border border-yellow-700">
+      <img src="assets/img/logo.png" alt="Brand Logo" class="h-10 w-10 md:h-14 md:w-14 rounded-full shadow-md border border-yellow-700 transition-all duration-300">
       <span class="font-semibold">M/s Onkarnath Agrawal Sarraf (Bachcha Sarraf)</span>
     </a>
     <nav class="hidden md:flex gap-6 text-sm">
@@ -26,41 +26,28 @@
   </div>
 </header>
 
-  <!-- GOLD RATE SECTION (highlighted, min 50vh) -->
-<section class="border-t border-b bg-gradient-to-r from-yellow-50 via-white to-yellow-50 backdrop-blur">
 
-  <div class="max-w-6xl mx-auto px-4 py-12 md:py-16 min-h-[50vh] grid md:grid-cols-2 gap-8 items-center">
+<!-- EXTENDED GOLD & SILVER RATES -->
+<section class="border-t border-b bg-gradient-to-r from-yellow-50 via-white to-yellow-50 backdrop-blur">
+  <div class="max-w-6xl mx-auto px-4 py-12 md:py-16 min-h-[50vh]">
     
-    <!-- Left: heading and context -->
-    <div>
-      <h2 class="text-3xl md:text-5xl font-semibold leading-tight">Today’s Gold & Silver Rates</h2>
+    <div class="text-center mb-10">
+      <h2 class="text-3xl md:text-5xl font-semibold leading-tight">Today’s Extended Gold & Silver Rates</h2>
       <p class="mt-4 text-slate-600 text-base md:text-lg">
-        Transparent, store-reference prices. Auto-updated from our trusted market feeds.
+        Bank, Cash, Jewellery & MCX indicative prices — auto-updated from live spot rates.
       </p>
       <div id="rates-updated" class="mt-3 text-sm text-slate-500"></div>
     </div>
 
-    <!-- Right: big highlighted cards -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <div class="rounded-2xl border p-5 bg-white/80">
-        <div class="text-xs uppercase tracking-wide text-slate-500">Gold 24K per gram</div>
-        <div id="home-rate24" class="mt-2 text-3xl md:text-4xl font-bold">₹—</div>
-      </div>
-      <div class="rounded-2xl border p-5 bg-white/80">
-        <div class="text-xs uppercase tracking-wide text-slate-500">Gold 22K per gram</div>
-        <div id="home-rate22" class="mt-2 text-3xl md:text-4xl font-bold">₹—</div>
-      </div>
-      <div class="rounded-2xl border p-5 bg-white/80">
-        <div class="text-xs uppercase tracking-wide text-slate-500">Gold 18K per gram (approx)</div>
-        <div id="home-rate18" class="mt-2 text-3xl md:text-4xl font-bold">₹—</div>
-      </div>
-      <div class="rounded-2xl border p-5 bg-white/80">
-        <div class="text-xs uppercase tracking-wide text-slate-500">Silver per gram</div>
-        <div id="home-ratesilver" class="mt-2 text-3xl md:text-4xl font-bold">₹—</div>
-      </div>
+    <!-- Rate cards -->
+    <div id="extended-rates" class="grid sm:grid-cols-2 md:grid-cols-3 gap-5"></div>
+
+    <div class="text-xs text-slate-500 text-center mt-6">
+      *MCX prices are indicative, derived from spot market data.
     </div>
   </div>
 </section>
+
 
 
   <!-- Hero -->
@@ -204,6 +191,61 @@
       const u = document.getElementById('rates-updated');
       if (u) u.textContent = 'Rates unavailable';
     });
+
+    (async () => {
+  const r = await fetch('data/rates.json', {cache:'no-cache'}).then(x => x.json());
+
+  // --- CONFIG (edit values to fine-tune spreads) ---
+  const cfg = {
+    bank_cash_spread_pct_gold: 0.15,
+    bank_cash_spread_pct_silver: 0.20,
+    k22_factor: 0.9167,
+    k20_factor: 0.8333,
+    k18_factor: 0.7500,
+    mcx_gold_lot_g: 10,
+    mcx_silver_lot_g: 1000,
+    mcx_gold_premium_pct: 0.00,
+    mcx_silver_premium_pct: 0.00
+  };
+
+  // base per-gram rates
+  const g24 = Number(r.gold24k || 0);
+  const s = Number(r.silver || 0);
+
+  // derived variants
+  const gold_bank   = Math.round(g24 * (1 + cfg.bank_cash_spread_pct_gold/100));
+  const gold_cash   = Math.round(g24 * (1 - cfg.bank_cash_spread_pct_gold/100));
+  const silver_bank = Math.round(s   * (1 + cfg.bank_cash_spread_pct_silver/100));
+  const silver_cash = Math.round(s   * (1 - cfg.bank_cash_spread_pct_silver/100));
+  const g22 = Math.round(g24 * cfg.k22_factor);
+  const g20 = Math.round(g24 * cfg.k20_factor);
+  const g18 = Math.round(g24 * cfg.k18_factor);
+  const mcxGold   = Math.round(g24 * cfg.mcx_gold_lot_g  * (1 + cfg.mcx_gold_premium_pct/100));
+  const mcxSilver = Math.round(s   * cfg.mcx_silver_lot_g * (1 + cfg.mcx_silver_premium_pct/100));
+
+  const rows = [
+    ['24 ct bank gold', `₹${gold_bank.toLocaleString('en-IN')}/g`],
+    ['24 ct cash gold', `₹${gold_cash.toLocaleString('en-IN')}/g`],
+    ['bank silver', `₹${silver_bank.toLocaleString('en-IN')}/g`],
+    ['cash silver', `₹${silver_cash.toLocaleString('en-IN')}/g`],
+    ['22 ct gold jewellery', `₹${g22.toLocaleString('en-IN')}/g`],
+    ['20 ct gold jewellery', `₹${g20.toLocaleString('en-IN')}/g`],
+    ['18 ct gold jewellery', `₹${g18.toLocaleString('en-IN')}/g`],
+    ['MCX gold live*', `₹${mcxGold.toLocaleString('en-IN')} / 10g`],
+    ['MCX silver live*', `₹${mcxSilver.toLocaleString('en-IN')} / kg`]
+  ];
+
+  const grid = document.getElementById('extended-rates');
+  grid.innerHTML = rows.map(([k, v]) => `
+    <div class="rounded-2xl border p-5 bg-white/80 hover:shadow-lg transition">
+      <div class="text-xs uppercase tracking-wide text-slate-500">${k}</div>
+      <div class="mt-2 text-2xl md:text-3xl font-bold">${v}</div>
+    </div>
+  `).join('');
+
+  document.getElementById('rates-updated').textContent =
+    `Updated ${r.updated || ''} — Source: ${r.source || 'Live feed'}`;
+})();
 
   </script>
 </body>
