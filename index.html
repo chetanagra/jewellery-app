@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Home — YOUR BRAND</title>
+  <title>Home — M/s Onkarnath Agrawal Sarraf (Bachcha Sarraf )</title>
+  <link rel="icon" type="image/x-icon" href="assets/img/logo.png">
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="description" content="Fine jewellery — gold, diamond, silver.">
   <script src="https://cdn.tailwindcss.com"></script>
@@ -11,18 +12,56 @@
 <body class="bg-white text-slate-900">
 
   <!-- Header -->
-  <header class="sticky top-0 z-40 bg-white/90 backdrop-blur border-b">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-      <a href="index.html" class="text-xl font-bold tracking-wide">YOUR BRAND</a>
-      <nav class="hidden md:flex gap-6 text-sm">
-        <a href="catalog.html" class="hover:text-slate-700">Catalog</a>
-        <a href="gold-rate.html" class="hover:text-slate-700">Gold Rates</a>
-        <a href="about.html" class="hover:text-slate-700">About</a>
-        <a href="contact.html" class="hover:text-slate-700">Contact</a>
-      </nav>
+<header class="sticky top-0 z-40 bg-white/90 backdrop-blur border-b">
+  <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+    <a href="index.html" class="flex items-center gap-3 text-2xl font-serif text-yellow-800 tracking-wide">
+      <img src="assets/img/logo.png" alt="Brand Logo" class="h-10 w-10 rounded-full shadow-md border border-yellow-700">
+      <span class="font-semibold">M/s Onkarnath Agrawal Sarraf (Bachcha Sarraf)</span>
+    </a>
+    <nav class="hidden md:flex gap-6 text-sm">
+      <a href="catalog.html">Catalog</a>
+      <a href="about.html">About</a>
+      <a href="contact.html">Contact</a>
+    </nav>
+  </div>
+</header>
+
+  <!-- GOLD RATE SECTION (highlighted, min 50vh) -->
+<section class="border-t border-b bg-gradient-to-r from-yellow-50 via-white to-yellow-50 backdrop-blur">
+
+  <div class="max-w-6xl mx-auto px-4 py-12 md:py-16 min-h-[50vh] grid md:grid-cols-2 gap-8 items-center">
+    
+    <!-- Left: heading and context -->
+    <div>
+      <h2 class="text-3xl md:text-5xl font-semibold leading-tight">Today’s Gold & Silver Rates</h2>
+      <p class="mt-4 text-slate-600 text-base md:text-lg">
+        Transparent, store-reference prices. Auto-updated from our trusted market feeds.
+      </p>
+      <div id="rates-updated" class="mt-3 text-sm text-slate-500"></div>
     </div>
-    <div id="rate-bar" class="text-center text-xs py-2"></div>
-  </header>
+
+    <!-- Right: big highlighted cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div class="rounded-2xl border p-5 bg-white/80">
+        <div class="text-xs uppercase tracking-wide text-slate-500">Gold 24K per gram</div>
+        <div id="home-rate24" class="mt-2 text-3xl md:text-4xl font-bold">₹—</div>
+      </div>
+      <div class="rounded-2xl border p-5 bg-white/80">
+        <div class="text-xs uppercase tracking-wide text-slate-500">Gold 22K per gram</div>
+        <div id="home-rate22" class="mt-2 text-3xl md:text-4xl font-bold">₹—</div>
+      </div>
+      <div class="rounded-2xl border p-5 bg-white/80">
+        <div class="text-xs uppercase tracking-wide text-slate-500">Gold 18K per gram (approx)</div>
+        <div id="home-rate18" class="mt-2 text-3xl md:text-4xl font-bold">₹—</div>
+      </div>
+      <div class="rounded-2xl border p-5 bg-white/80">
+        <div class="text-xs uppercase tracking-wide text-slate-500">Silver per gram</div>
+        <div id="home-ratesilver" class="mt-2 text-3xl md:text-4xl font-bold">₹—</div>
+      </div>
+    </div>
+  </div>
+</section>
+
 
   <!-- Hero -->
   <section class="max-w-6xl mx-auto px-4 py-10 grid md:grid-cols-2 gap-8 items-center">
@@ -36,6 +75,8 @@
     </div>
     <img src="assets/img/hero.jpg" class="rounded-2xl w-full object-cover" alt="Hero">
   </section>
+
+
 
   <!-- New Arrivals -->
   <section class="max-w-6xl mx-auto px-4 py-10">
@@ -139,6 +180,31 @@
         </a>
       `).join('');
     })();
+
+
+  fetch('data/rates.json', {cache:'no-cache'})
+    .then(r => r.ok ? r.json() : Promise.reject())
+    .then(d => {
+      const r24 = Number(d.gold24k||0);
+      const r22 = Number(d.gold22k||0);
+      const r18 = Math.round(r24 * 0.75);
+      const rs  = Number(d.silver||0);
+      document.getElementById('home-rate24').textContent = '₹' + r24.toLocaleString('en-IN');
+      document.getElementById('home-rate22').textContent = '₹' + r22.toLocaleString('en-IN');
+      document.getElementById('home-rate18').textContent = '₹' + r18.toLocaleString('en-IN');
+      document.getElementById('home-ratesilver').textContent = '₹' + rs.toLocaleString('en-IN');
+      document.getElementById('rates-updated').textContent = 'Updated ' + (d.updated || '');
+      const rb = document.getElementById('rate-bar');
+      if (rb) rb.textContent =
+        `Gold 24K: ₹${r24}/g | 22K: ₹${r22}/g | Silver: ₹${rs}/g — Updated ${d.updated || ''}`;
+    })
+    .catch(() => {
+      const rb = document.getElementById('rate-bar');
+      if (rb) rb.textContent = 'Rates unavailable';
+      const u = document.getElementById('rates-updated');
+      if (u) u.textContent = 'Rates unavailable';
+    });
+
   </script>
 </body>
 </html>
