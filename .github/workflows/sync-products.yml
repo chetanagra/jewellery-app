@@ -4,6 +4,8 @@ on:
   # schedule:
     # - cron: "0 * * * *"   # every 1 hours
   workflow_dispatch:        # allow manual run
+  repository_dispatch:
+    types: [sheet-updated]   # custom event name
 
 permissions:
   contents: write
