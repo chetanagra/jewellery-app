@@ -26,7 +26,6 @@
   </div>
 </header>
 
-
 <!-- EXTENDED GOLD & SILVER RATES -->
 <section class="border-t border-b bg-gradient-to-r from-yellow-50 via-white to-yellow-50 backdrop-blur">
   <div class="max-w-6xl mx-auto px-4 py-12 md:py-16 min-h-[50vh]">
@@ -40,7 +39,7 @@
     </div>
 
     <!-- Rate cards -->
-    <div id="extended-rates" class="grid sm:grid-cols-2 md:grid-cols-3 gap-5"></div>
+    <div id="extended-rates" class="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5"></div>
 
     <div class="text-xs text-slate-500 text-center mt-6">
       *MCX prices are indicative, derived from spot market data.
@@ -48,85 +47,73 @@
   </div>
 </section>
 
-
-
-  <!-- Hero -->
-  <section class="max-w-6xl mx-auto px-4 py-10 grid md:grid-cols-2 gap-8 items-center">
-    <div>
-      <h1 class="text-3xl md:text-5xl font-semibold leading-tight">Elegant Gold & Diamond Jewellery</h1>
-      <p class="mt-4 text-slate-600">Handcrafted designs. Hallmarked purity. Transparent pricing linked to today’s gold rate.</p>
-      <div class="mt-6 flex gap-3">
-        <a href="catalog.html" class="px-5 py-3 rounded-xl bg-black text-white">Shop Catalog</a>
-        <a href="contact.html" class="px-5 py-3 rounded-xl border">Book a Visit</a>
-      </div>
+<!-- Hero -->
+<section class="max-w-6xl mx-auto px-4 py-10 grid md:grid-cols-2 gap-8 items-center">
+  <div>
+    <h1 class="text-3xl md:text-5xl font-semibold leading-tight">Elegant Gold & Diamond Jewellery</h1>
+    <p class="mt-4 text-slate-600">Handcrafted designs. Hallmarked purity. Transparent pricing linked to today’s gold rate.</p>
+    <div class="mt-6 flex gap-3">
+      <a href="catalog.html" class="px-5 py-3 rounded-xl bg-black text-white">Shop Catalog</a>
+      <a href="contact.html" class="px-5 py-3 rounded-xl border">Book a Visit</a>
     </div>
-    <img src="assets/img/hero.jpg" class="rounded-2xl w-full object-cover" alt="Hero">
-  </section>
+  </div>
+  <img src="assets/img/hero.jpg" class="rounded-2xl w-full object-cover" alt="Hero">
+</section>
 
+<!-- New Arrivals -->
+<section class="max-w-6xl mx-auto px-4 py-10">
+  <h2 class="text-xl font-semibold mb-4">New Arrivals</h2>
+  <div id="featured" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+  <div id="featured-empty" class="hidden text-center text-slate-500 py-8">No items to show.</div>
+</section>
 
-
-  <!-- New Arrivals -->
-  <section class="max-w-6xl mx-auto px-4 py-10">
-    <h2 class="text-xl font-semibold mb-4">New Arrivals</h2>
-    <div id="featured" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
-    <div id="featured-empty" class="hidden text-center text-slate-500 py-8">No items to show.</div>
-  </section>
-
-  <!-- Scripts -->
-  <script>
-    // Robust CSV parser (handles quotes/commas/newlines)
-    function parseCSV(text) {
-      const rows = [];
-      let i = 0, cur = '', row = [], inQuotes = false;
-      while (i < text.length) {
-        const c = text[i];
-        if (c === '"') {
-          if (inQuotes && text[i+1] === '"') { cur += '"'; i++; }
-          else inQuotes = !inQuotes;
-        } else if (c === ',' && !inQuotes) { row.push(cur); cur = ''; }
-        else if ((c === '\n' || c === '\r') && !inQuotes) {
-          if (cur !== '' || row.length) { row.push(cur); rows.push(row); cur=''; row=[]; }
-        } else { cur += c; }
-        i++;
-      }
-      if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
-      return rows;
+<!-- Scripts -->
+<script>
+  // Robust CSV parser (handles quotes/commas/newlines)
+  function parseCSV(text) {
+    const rows = [];
+    let i = 0, cur = '', row = [], inQuotes = false;
+    while (i < text.length) {
+      const c = text[i];
+      if (c === '"') {
+        if (inQuotes && text[i+1] === '"') { cur += '"'; i++; }
+        else inQuotes = !inQuotes;
+      } else if (c === ',' && !inQuotes) { row.push(cur); cur = ''; }
+      else if ((c === '\n' || c === '\r') && !inQuotes) {
+        if (cur !== '' || row.length) { row.push(cur); rows.push(row); cur=''; row=[]; }
+      } else { cur += c; }
+      i++;
     }
+    if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
+    return rows;
+  }
 
-    async function loadCSV(url){
-      const t = await (await fetch(url, {cache:'no-cache'})).text();
-      const parsed = parseCSV(t.trim());
-      const head = parsed[0].map(h=>h.trim());
-      return parsed.slice(1)
-        .filter(r => r && r.length && r.some(cell => (cell||'').trim() !== ''))
-        .map(r => Object.fromEntries(head.map((h,i)=>[h, (r[i]||'').trim()])));
-    }
+  async function loadCSV(url){
+    const t = await (await fetch(url, {cache:'no-cache'})).text();
+    const parsed = parseCSV(t.trim());
+    const head = parsed[0].map(h=>h.trim());
+    return parsed.slice(1)
+      .filter(r => r && r.length && r.some(cell => (cell||'').trim() !== ''))
+      .map(r => Object.fromEntries(head.map((h,i)=>[h, (r[i]||'').trim()])));
+  }
 
-    function purityFromKarat(k){
-      const n = Number(k||0);
-      if (n === 24) return '24K';
-      if (n === 22) return '22K';
-      if (n === 18) return '18K';
-      return '';
-    }
-    function metalFromRow(karat, stone){
-      const k = Number(karat||0);
-      if (k > 0) return 'Gold';
-      if ((stone||'').toLowerCase() === 'diamond') return 'Diamond';
-      return 'Silver';
-    }
+  function purityFromKarat(k){
+    const n = Number(k||0);
+    if (n === 24) return '24K';
+    if (n === 22) return '22K';
+    if (n === 18) return '18K';
+    return '';
+  }
+  function metalFromRow(karat, stone){
+    const k = Number(karat||0);
+    if (k > 0) return 'Gold';
+    if ((stone||'').toLowerCase() === 'diamond') return 'Diamond';
+    return 'Silver';
+  }
 
-    (async () => {
-      // Rates bar
-      fetch('data/rates.json', {cache:'no-cache'})
-        .then(r => r.ok ? r.json() : Promise.reject())
-        .then(d => {
-          document.getElementById('rate-bar').innerText =
-            `Gold 24K: ₹${d.gold24k}/g | 22K: ₹${d.gold22k}/g | Silver: ₹${d.silver}/g — Updated ${d.updated}`;
-        })
-        .catch(()=>{ document.getElementById('rate-bar').innerText = 'Rates unavailable'; });
-
-      // New Arrivals (top by id desc)
+  // Load products CSV and render featured
+  (async () => {
+    try {
       const rows = await loadCSV('data/products.csv');
       const items = rows.map(x => ({
         id: x.id,
@@ -166,87 +153,111 @@
           </div>
         </a>
       `).join('');
-    })();
+    } catch (e) {
+      // if products CSV missing, silently ignore
+      console.warn('Products load failed', e);
+    }
+  })();
 
+  // Helper to format INR
+  function fmtINR(n){
+    if (n == null || n === 0 || Number.isNaN(Number(n))) return '–';
+    return '₹' + Number(n).toLocaleString('en-IN');
+  }
 
-  fetch('data/rates.json', {cache:'no-cache'})
-    .then(r => r.ok ? r.json() : Promise.reject())
-    .then(d => {
-      const r24 = Number(d.gold24k||0);
-      const r22 = Number(d.gold22k||0);
-      const r18 = Math.round(r24 * 0.75);
-      const rs  = Number(d.silver||0);
-      document.getElementById('home-rate24').textContent = '₹' + r24.toLocaleString('en-IN');
-      document.getElementById('home-rate22').textContent = '₹' + r22.toLocaleString('en-IN');
-      document.getElementById('home-rate18').textContent = '₹' + r18.toLocaleString('en-IN');
-      document.getElementById('home-ratesilver').textContent = '₹' + rs.toLocaleString('en-IN');
-      document.getElementById('rates-updated').textContent = 'Updated ' + (d.updated || '');
-      const rb = document.getElementById('rate-bar');
-      if (rb) rb.textContent =
-        `Gold 24K: ₹${r24}/g | 22K: ₹${r22}/g | Silver: ₹${rs}/g — Updated ${d.updated || ''}`;
-    })
-    .catch(() => {
-      const rb = document.getElementById('rate-bar');
-      if (rb) rb.textContent = 'Rates unavailable';
-      const u = document.getElementById('rates-updated');
-      if (u) u.textContent = 'Rates unavailable';
-    });
+  // Render rates from data/rates.json
+  (async () => {
+    const grid = document.getElementById('extended-rates');
+    const updatedEl = document.getElementById('rates-updated');
 
-    (async () => {
-  const r = await fetch('data/rates.json', {cache:'no-cache'}).then(x => x.json());
+    try {
+      const resp = await fetch('data/rates.json', { cache: 'no-cache' });
+      if (!resp.ok) throw new Error('rates.json fetch failed');
+      const d = await resp.json();
 
-  // --- CONFIG (edit values to fine-tune spreads) ---
-  const cfg = {
-    bank_cash_spread_pct_gold: 0.15,
-    bank_cash_spread_pct_silver: 0.20,
-    k22_factor: 0.9167,
-    k20_factor: 0.8333,
-    k18_factor: 0.7500,
-    mcx_gold_lot_g: 10,
-    mcx_silver_lot_g: 1000,
-    mcx_gold_premium_pct: 0.00,
-    mcx_silver_premium_pct: 0.00
-  };
+      // metadata
+      const updatedText = d.updated || '';
+      const sourceText = d.source || '';
+      updatedEl.textContent = updatedText ? `Updated ${updatedText} — Source: ${sourceText}` : `Source: ${sourceText}`;
 
-  // base per-gram rates
-  const g24 = Number(r.gold24k || 0);
-  const s = Number(r.silver || 0);
+      // If new format exists (items array), render items
+      if (Array.isArray(d.items) && d.items.length) {
+        grid.innerHTML = d.items.map(item => {
+          // item may have raw_base/mid/buy/sell/label/unit
+          const label = item.label || item.key || 'Rate';
+          const buy = (item.buy != null) ? fmtINR(item.buy) : '–';
+          const sell = (item.sell != null) ? fmtINR(item.sell) : '–';
+          const unit = item.unit || '';
+          // highlight spot and basic labels differently
+          const isSpot = /(spot|SPOT|price_per_gram|gold_spot|silver_spot)/i.test(item.key || item.label || '');
+          const accent = isSpot ? 'text-yellow-800' : 'text-slate-800';
+          return `
+            <div class="rounded-2xl border p-5 bg-white/80 hover:shadow-lg transition">
+              <div class="text-xs uppercase tracking-wide text-slate-500 mb-1">${label}</div>
+              <div class="text-2xl md:text-3xl font-bold ${accent}">${buy}</div>
+              <div class="text-sm text-slate-600 mt-1">Sell ${sell}</div>
+              <div class="text-xs text-slate-400 mt-2">${unit}</div>
+            </div>
+          `;
+        }).join('');
+        return;
+      }
 
-  // derived variants
-  const gold_bank   = Math.round(g24 * (1 + cfg.bank_cash_spread_pct_gold/100));
-  const gold_cash   = Math.round(g24 * (1 - cfg.bank_cash_spread_pct_gold/100));
-  const silver_bank = Math.round(s   * (1 + cfg.bank_cash_spread_pct_silver/100));
-  const silver_cash = Math.round(s   * (1 - cfg.bank_cash_spread_pct_silver/100));
-  const g22 = Math.round(g24 * cfg.k22_factor);
-  const g20 = Math.round(g24 * cfg.k20_factor);
-  const g18 = Math.round(g24 * cfg.k18_factor);
-  const mcxGold   = Math.round(g24 * cfg.mcx_gold_lot_g  * (1 + cfg.mcx_gold_premium_pct/100));
-  const mcxSilver = Math.round(s   * cfg.mcx_silver_lot_g * (1 + cfg.mcx_silver_premium_pct/100));
+      // Back-compat: old simple JSON with gold24k/gold22k/silver fields
+      if (d.gold24k || d.gold22k || d.silver) {
+        const r24 = Number(d.gold24k || 0);
+        const r22 = Number(d.gold22k || Math.round(r24 * 0.9167));
+        const rs  = Number(d.silver || 0);
+        const cfg = {
+          bank_cash_spread_pct_gold: 0.15,
+          bank_cash_spread_pct_silver: 0.20,
+          k22_factor: 0.9167,
+          k20_factor: 0.8333,
+          k18_factor: 0.7500,
+          mcx_gold_lot_g: 10,
+          mcx_silver_lot_g: 1000,
+          mcx_gold_premium_pct: 0.00,
+          mcx_silver_premium_pct: 0.00
+        };
+        const gold_bank   = Math.round(r24 * (1 + cfg.bank_cash_spread_pct_gold/100));
+        const gold_cash   = Math.round(r24 * (1 - cfg.bank_cash_spread_pct_gold/100));
+        const silver_bank = Math.round(rs   * (1 + cfg.bank_cash_spread_pct_silver/100));
+        const silver_cash = Math.round(rs   * (1 - cfg.bank_cash_spread_pct_silver/100));
+        const g22 = Math.round(r24 * cfg.k22_factor);
+        const g20 = Math.round(r24 * cfg.k20_factor);
+        const g18 = Math.round(r24 * cfg.k18_factor);
+        const mcxGold   = Math.round(r24 * cfg.mcx_gold_lot_g  * (1 + cfg.mcx_gold_premium_pct/100));
+        const mcxSilver = Math.round(rs   * cfg.mcx_silver_lot_g * (1 + cfg.mcx_silver_premium_pct/100));
+        const rows = [
+          ['24 ct bank gold', fmtINR(gold_bank) + '/g'],
+          ['24 ct cash gold', fmtINR(gold_cash) + '/g'],
+          ['bank silver', fmtINR(silver_bank) + '/g'],
+          ['cash silver', fmtINR(silver_cash) + '/g'],
+          ['22 ct gold jewellery', fmtINR(g22) + '/g'],
+          ['20 ct gold jewellery', fmtINR(g20) + '/g'],
+          ['18 ct gold jewellery', fmtINR(g18) + '/g'],
+          ['MCX gold live*', fmtINR(mcxGold) + ' / 10g'],
+          ['MCX silver live*', fmtINR(mcxSilver) + ' / kg']
+        ];
+        grid.innerHTML = rows.map(([k, v]) => `
+          <div class="rounded-2xl border p-5 bg-white/80 hover:shadow-lg transition">
+            <div class="text-xs uppercase tracking-wide text-slate-500">${k}</div>
+            <div class="mt-2 text-2xl md:text-3xl font-bold">${v}</div>
+          </div>
+        `).join('');
+        return;
+      }
 
-  const rows = [
-    ['24 ct bank gold', `₹${gold_bank.toLocaleString('en-IN')}/g`],
-    ['24 ct cash gold', `₹${gold_cash.toLocaleString('en-IN')}/g`],
-    ['bank silver', `₹${silver_bank.toLocaleString('en-IN')}/g`],
-    ['cash silver', `₹${silver_cash.toLocaleString('en-IN')}/g`],
-    ['22 ct gold jewellery', `₹${g22.toLocaleString('en-IN')}/g`],
-    ['20 ct gold jewellery', `₹${g20.toLocaleString('en-IN')}/g`],
-    ['18 ct gold jewellery', `₹${g18.toLocaleString('en-IN')}/g`],
-    ['MCX gold live*', `₹${mcxGold.toLocaleString('en-IN')} / 10g`],
-    ['MCX silver live*', `₹${mcxSilver.toLocaleString('en-IN')} / kg`]
-  ];
+      // nothing to show
+      grid.innerHTML = `<div class='text-center text-slate-500'>Rates data not available</div>`;
 
-  const grid = document.getElementById('extended-rates');
-  grid.innerHTML = rows.map(([k, v]) => `
-    <div class="rounded-2xl border p-5 bg-white/80 hover:shadow-lg transition">
-      <div class="text-xs uppercase tracking-wide text-slate-500">${k}</div>
-      <div class="mt-2 text-2xl md:text-3xl font-bold">${v}</div>
-    </div>
-  `).join('');
+    } catch (err) {
+      console.error(err);
+      document.getElementById('extended-rates').innerHTML = `<div class='text-center text-slate-500'>Failed to load rates.</div>`;
+      document.getElementById('rates-updated').textContent = 'Rates unavailable';
+    }
+  })();
+</script>
 
-  document.getElementById('rates-updated').textContent =
-    `Updated ${r.updated || ''} — Source: ${r.source || 'Live feed'}`;
-})();
-
-  </script>
 </body>
 </html>
