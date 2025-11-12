@@ -111,6 +111,7 @@ jobs:
           set -euo pipefail
           mkdir -p data
 
+          # grab outputs from fetch step into shell vars
           GOLD24='${{ steps.goldapi.outputs.gold24k }}'
           GOLD24_RAW='${{ steps.goldapi.outputs.gold24k_raw }}'
           GOLD22_RAW='${{ steps.goldapi.outputs.gold22k_raw }}'
@@ -121,6 +122,10 @@ jobs:
           API_HIGH='${{ steps.goldapi.outputs.api_high }}'
           TS='${{ steps.goldapi.outputs.timestamp }}'
           SRC='${{ steps.goldapi.outputs.source }}'
+
+          # new: spot per-gram outputs from fetch step
+          GOLD_PER_GRAM='${{ steps.goldapi.outputs.gold_per_gram }}'
+          SILVER_PER_GRAM='${{ steps.goldapi.outputs.silver_per_gram }}'
 
           if [ -z "${GOLD24:-}" ] || [ "${GOLD24}" = "null" ]; then GOLD24=0; fi
           if [ -z "${SILVER:-}" ] || [ "${SILVER}" = "null" ]; then SILVER=""; fi
@@ -154,7 +159,6 @@ jobs:
               high_i=null
             fi
 
-            # Use if..then..else..end instead of ?: to avoid jq compile errors
             jq -n \
               --arg key "$key" \
               --arg label "$label" \
@@ -178,6 +182,7 @@ jobs:
               }' > "tmp_rate_$key.json"
           }
 
+          # RULES (tweak these to match your shop's pricing policy)
           GOLD_99_5_CASH_MARGIN=0.06
           GOLD_99_5_CASH_BUY_SPREAD=0.0025
           GOLD_99_5_CASH_SELL_SPREAD=0.0025
@@ -209,6 +214,7 @@ jobs:
           GOLD_SCALE=10
           SILVER_SCALE=1000
 
+          # Prefer raw float outputs if available
           if [ -n "${GOLD24_RAW:-}" ] && [ "${GOLD24_RAW}" != "null" ]; then
             BASE_GOLD_PER_G="${GOLD24_RAW}"
           else
@@ -221,6 +227,9 @@ jobs:
             BASE_SILVER_PER_G="${SILVER}"
           fi
 
+          # ---------------------------
+          # Generate computed items (same as before)
+          # ---------------------------
           compute_line "gold_99_50_cash" "GOLD 99.50 CASH BHAV" "${BASE_GOLD_PER_G}" 99.5 "$GOLD_SCALE" $GOLD_99_5_CASH_MARGIN $GOLD_99_5_CASH_BUY_SPREAD $GOLD_99_5_CASH_SELL_SPREAD
           compute_line "gold_99_50_rtgs" "GOLD 99.50 RTGS BHAV 10-20-50 GM" "${BASE_GOLD_PER_G}" 99.5 "$GOLD_SCALE" $GOLD_99_5_RTGS_MARGIN $GOLD_99_5_RTGS_BUY_SPREAD $GOLD_99_5_RTGS_SELL_SPREAD
           compute_line "gold_max" "GOLD MAX" "${BASE_GOLD_PER_G}" 99.5 "$GOLD_SCALE" $GOLD_MAX_MARGIN $GOLD_MAX_BUY_SPREAD $GOLD_MAX_SELL_SPREAD
@@ -237,6 +246,7 @@ jobs:
             jq -n '{key:"silver_max", label:"SILVER MAX", unit:"1000 g", raw_base:null, mid:null, buy:null, sell:null, low:null, high:null }' > tmp_rate_silver_max.json
           fi
 
+          # BASIC GOLD PRICES: 22k 20k 18k 14k 10k (GST & Making Extra)
           GOLD22=$(awk "BEGIN{printf \"%.8f\", ${BASE_GOLD_PER_G} * 22/24}")
           GOLD20=$(awk "BEGIN{printf \"%.8f\", ${BASE_GOLD_PER_G} * 20/24}")
           GOLD18=$(awk "BEGIN{printf \"%.8f\", ${BASE_GOLD_PER_G} * 18/24}")
@@ -249,27 +259,38 @@ jobs:
           compute_line "gold_14k_basic" "14 K GOLD BASIC PRICE (GST & MAKING EXTRA)" "$GOLD14" 100 "$GOLD_SCALE" $BASIC_MARGIN $BASIC_BUY_SPREAD $BASIC_SELL_SPREAD
           compute_line "gold_10k_basic" "10 K GOLD BASIC PRICE (GST & MAKING EXTRA)" "$GOLD10" 100 "$GOLD_SCALE" $BASIC_MARGIN $BASIC_BUY_SPREAD $BASIC_SELL_SPREAD
 
+          # ---------------------------
+          # create spot tmp files NOW (before collating)
+          # ---------------------------
+          if [ -n "${GOLD_PER_GRAM:-}" ] && [ "${GOLD_PER_GRAM}" != "" ] && [ "${GOLD_PER_GRAM}" != "null" ]; then
+            jq -n --arg g "${GOLD_PER_GRAM}" \
+              '{key:"gold_price_per_gram", label:"GOLD SPOT (per g)", unit:"1 g", raw_base:( $g|tonumber ), mid:( $g|tonumber ), buy:( $g|tonumber ), sell:( $g|tonumber ), low:null, high:null }' \
+              > tmp_rate_gold_spot.json
+          else
+            jq -n '{key:"gold_price_per_gram", label:"GOLD SPOT (per g)", unit:"1 g", raw_base:null, mid:null, buy:null, sell:null, low:null, high:null }' > tmp_rate_gold_spot.json
+          fi
+
+          if [ -n "${SILVER_PER_GRAM:-}" ] && [ "${SILVER_PER_GRAM}" != "" ] && [ "${SILVER_PER_GRAM}" != "null" ]; then
+            jq -n --arg s "${SILVER_PER_GRAM}" \
+              '{key:"silver_price_per_gram", label:"SILVER SPOT (per g)", unit:"1 g", raw_base:( $s|tonumber ), mid:( $s|tonumber ), buy:( $s|tonumber ), sell:( $s|tonumber ), low:null, high:null }' \
+              > tmp_rate_silver_spot.json
+          else
+            jq -n '{key:"silver_price_per_gram", label:"SILVER SPOT (per g)", unit:"1 g", raw_base:null, mid:null, buy:null, sell:null, low:null, high:null }' > tmp_rate_silver_spot.json
+          fi
+
+          # Collate tmp files into final JSON array (this now includes spot files)
           jq -s '.' tmp_rate_*.json > data/rates.json || true
 
+          # Add top-level metadata and wrap into { updated, source, items: [...] }
           UPDATED=$(TZ=Asia/Kolkata date "+%Y-%m-%d %H:%M IST")
           jq --arg updated "$UPDATED" --arg source "$SRC" '. as $arr | {updated:$updated, source:$source, items:$arr}' data/rates.json > data/rates_with_meta.json
           mv data/rates_with_meta.json data/rates.json
 
-          # --- Add these two lines before you collate tmp_rate_*.json ---
-          jq -n --arg g "${{ steps.goldapi.outputs.gold_per_gram }}" \
-                '{key:"gold_price_per_gram", label:"GOLD", unit:"1 g", buy:($g|tonumber), sell:($g|tonumber)}' \
-                > tmp_rate_gold_spot.json
-          
-          if [ -n "${{ steps.goldapi.outputs.silver_per_gram }}" ] && [ "${{ steps.goldapi.outputs.silver_per_gram }}" != "null" ]; then
-            jq -n --arg s "${{ steps.goldapi.outputs.silver_per_gram }}" \
-                  '{key:"silver_price_per_gram", label:"SILVER", unit:"1 g", buy:($s|tonumber), sell:($s|tonumber)}' \
-                  > tmp_rate_silver_spot.json
-          fi
-
-
+          # cleanup tmp files
           rm -f tmp_rate_*.json || true
 
           echo "Wrote data/rates.json (items: $(jq '.items | length' data/rates.json))"
+
 
       - name: Commit & push data/rates.json
         run: |
