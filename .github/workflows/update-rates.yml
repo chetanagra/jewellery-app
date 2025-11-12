@@ -1,4 +1,4 @@
-name: Update gold/silver (GoldAPI only, 2x/weekday, MCX parity)
+name: Update gold/silver (GoldAPI only, 2x/weekday, simple rates.json)
 
 on:
   schedule:
@@ -15,16 +15,17 @@ jobs:
     env:
       TZ: "Asia/Kolkata"
       OUNCE_TO_GRAM: "31.1034768"
+      # parity envs retained but not required for this minimal output
       PURITY_NUM: "995"
       PURITY_DEN: "999"
-      DUTY: "0.065"       # 5% BCD + 1% AIDC + 0.5% SWS
-      BANK: "0.001"       # 0.1% banking/logistics
+      DUTY: "0.065"
+      BANK: "0.001"
 
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Install jq + bc
+      - name: Install tools
         run: |
           sudo apt-get update
           sudo apt-get install -y jq bc
@@ -42,116 +43,80 @@ jobs:
           XAG_JSON=$(curl -fSs -H "x-access-token: $GOLDAPI_KEY" "https://www.goldapi.io/api/XAG/INR")
 
           # Prefer INR/gram; else derive from INR/oz
-          G_INR_G=$(echo "$XAU_JSON" | jq -r '.price_gram_24k // empty')
-          if [ -z "$G_INR_G" ] || [ "$G_INR_G" = "null" ]; then
+          G24=$(echo "$XAU_JSON" | jq -r '.price_gram_24k // empty')
+          if [ -z "$G24" ] || [ "$G24" = "null" ]; then
             POZ_G=$(echo "$XAU_JSON" | jq -r '.price // empty')  # ₹/oz
             [ -z "$POZ_G" ] && { echo "GoldAPI missing gold price"; exit 1; }
-            # Convert INR/oz -> INR/g using bc
-            G_INR_G=$(echo "scale=8; $POZ_G / $OUNCE_TO_GRAM" | bc -l)
+            G24=$(echo "scale=8; $POZ_G / $OUNCE_TO_GRAM" | bc -l)
           fi
 
-          S_INR_G=$(echo "$XAG_JSON" | jq -r '.price_gram_999 // empty')
-          if [ -z "$S_INR_G" ] || [ "$S_INR_G" = "null" ]; then
+          # Silver: prefer price_gram_999, else derive from oz
+          SGR=$(echo "$XAG_JSON" | jq -r '.price_gram_999 // empty')
+          if [ -z "$SGR" ] || [ "$SGR" = "null" ]; then
             POZ_S=$(echo "$XAG_JSON" | jq -r '.price // empty') || true
             if [ -n "${POZ_S:-}" ]; then
-              S_INR_G=$(echo "scale=8; $POZ_S / $OUNCE_TO_GRAM" | bc -l)
+              SGR=$(echo "scale=8; $POZ_S / $OUNCE_TO_GRAM" | bc -l)
             else
-              S_INR_G=""
+              SGR=""
             fi
           fi
 
           TS=$(echo "$XAU_JSON" | jq -r '.timestamp // empty')
 
-          # Normalize formatting (remove leading + sign, ensure numeric)
-          # Write outputs
-          echo "gold24k_inr_per_g=$G_INR_G" >> "$GITHUB_OUTPUT"
-          echo "silver_inr_per_g_999=${S_INR_G:-}" >> "$GITHUB_OUTPUT"
-          echo "timestamp=$TS" >> "$GITHUB_OUTPUT"
+          # Normalize: round to integers for display
+          # gold24k as integer rupees per gram
+          gold24k_int=$(printf "%.0f" "$(echo "$G24" | awk '{printf "%f",$0}')")
+          silver_int=""
+          if [ -n "${SGR}" ]; then
+            silver_int=$(printf "%.0f" "$(echo "$SGR" | awk '{printf "%f",$0}')")
+          fi
 
-      - name: Compute MCX-style parity (995 + duty + bank)
-        id: parity
-        run: |
-          set -euo pipefail
-          G_INR_G='${{ steps.goldapi.outputs.gold24k_inr_per_g }}'
-          [ -z "$G_INR_G" ] && { echo "Missing gold INR/gram"; exit 1; }
+          # Choose readable source label
+          SRC="GoldAPI (spot per gram, INR)"
 
-          PURITY_NUM=${PURITY_NUM}
-          PURITY_DEN=${PURITY_DEN}
-          DUTY=${DUTY}
-          BANK=${BANK}
+          echo "gold24k=${gold24k_int}" >> "$GITHUB_OUTPUT"
+          echo "silver=${silver_int}" >> "$GITHUB_OUTPUT"
+          echo "timestamp=${TS}" >> "$GITHUB_OUTPUT"
+          echo "source=${SRC}" >> "$GITHUB_OUTPUT"
 
-          # Using bc for floating math
-          # base_995 = g * (PURITY_NUM / PURITY_DEN)
-          base_995=$(echo "scale=8; ${G_INR_G} * (${PURITY_NUM} / ${PURITY_DEN})" | bc -l)
-
-          # landed_per_gram = base_995 * (1 + DUTY + BANK)
-          sum_factor=$(echo "scale=8; 1 + ${DUTY} + ${BANK}" | bc -l)
-          landed_per_gram=$(echo "scale=8; ${base_995} * ${sum_factor}" | bc -l)
-
-          # multiply to get per 10g and per kg
-          landed_per_10g=$(echo "scale=2; ${landed_per_gram} * 10" | bc -l)
-          landed_per_kg=$(echo "scale=2; ${landed_per_gram} * 1000" | bc -l)
-
-          # Round/format for output (keep a few decimals where relevant)
-          gold24k_rounded=$(printf "%.4f" "${G_INR_G}")
-          base_995_rounded=$(printf "%.4f" "${base_995}")
-          landed_g_rounded=$(printf "%.2f" "${landed_per_gram}")
-          landed_10g_rounded=$(printf "%.2f" "${landed_per_10g}")
-          landed_kg_rounded=$(printf "%.2f" "${landed_per_kg}")
-
-          echo "gold24k_inr_per_g=${gold24k_rounded}" >> "$GITHUB_OUTPUT"
-          echo "base_995_inr_per_g=${base_995_rounded}" >> "$GITHUB_OUTPUT"
-          echo "landed_per_gram=${landed_g_rounded}" >> "$GITHUB_OUTPUT"
-          echo "landed_per_10g=${landed_10g_rounded}" >> "$GITHUB_OUTPUT"
-          echo "landed_per_kg=${landed_kg_rounded}" >> "$GITHUB_OUTPUT"
-
-      - name: Write rates.json
+      - name: Write rates.json (jq)
         run: |
           set -euo pipefail
           mkdir -p data
 
-          G_INR_G='${{ steps.goldapi.outputs.gold24k_inr_per_g }}'
-          S_INR_G='${{ steps.goldapi.outputs.silver_inr_per_g_999 }}'
+          # inputs from previous step
+          GOLD24='${{ steps.goldapi.outputs.gold24k }}'
+          SILVER='${{ steps.goldapi.outputs.silver }}'
           TS='${{ steps.goldapi.outputs.timestamp }}'
+          SRC='${{ steps.goldapi.outputs.source }}'
 
-          PURITY_NUM=${PURITY_NUM}
-          PURITY_DEN=${PURITY_DEN}
-          DUTY=${DUTY}
-          BANK=${BANK}
+          # Compute 22k (round)
+          # if GOLD24 empty -> set 0
+          if [ -z "${GOLD24:-}" ] || [ "${GOLD24}" = "null" ]; then
+            GOLD24=0
+          fi
 
-          # compute base_995, landed values using bc (duplicate of parity step but ensures consistent values in file)
-          base_995=$(echo "scale=8; ${G_INR_G} * (${PURITY_NUM} / ${PURITY_DEN})" | bc -l)
-          sum_factor=$(echo "scale=8; 1 + ${DUTY} + ${BANK}" | bc -l)
-          landed_per_gram=$(echo "scale=8; ${base_995} * ${sum_factor}" | bc -l)
-          landed_per_10g=$(echo "scale=2; ${landed_per_gram} * 10" | bc -l)
-          landed_per_kg=$(echo "scale=2; ${landed_per_gram} * 1000" | bc -l)
-
-          # pretty formatting
-          BASE_995=$(printf "%.4f" "${base_995}")
-          LANDED_G=$(printf "%.2f" "${landed_per_gram}")
-          LANDED_10G=$(printf "%.2f" "${landed_per_10g}")
-          LANDED_KG=$(printf "%.2f" "${landed_per_kg}")
+          GOLD22=$(awk -v g="${GOLD24}" 'BEGIN{ printf("%d", (g * 0.9167) + 0.5) }')
+          SILVAL=0
+          if [ -n "${SILVER:-}" ] && [ "${SILVER}" != "null" ]; then
+            SILVAL=$(printf "%d" "${SILVER}")
+          fi
 
           UPDATED=$(TZ=Asia/Kolkata date "+%Y-%m-%d %H:%M IST")
 
-          cat > data/rates.json <<JSON
-          {
-            "gold24k_inr_per_g": ${G_INR_G},
-            "silver_inr_per_g_999": ${S_INR_G:-0},
-            "parity": {
-              "purity_used": "${PURITY_NUM}/${PURITY_DEN}",
-              "duty": ${DUTY},
-              "bank": ${BANK},
-              "base_995_inr_per_g": ${BASE_995},
-              "landed_per_gram": ${LANDED_G},
-              "landed_per_10g": ${LANDED_10G},
-              "landed_per_kg": ${LANDED_KG}
-            },
-            "updated": "${UPDATED}",
-            "goldapi_timestamp": ${TS},
-            "source": "GoldAPI (XAU & XAG)"
-          }
-          JSON
+          jq -n \
+            --argjson gold24 "${GOLD24}" \
+            --argjson gold22 "${GOLD22}" \
+            --argjson silver "${SILVAL}" \
+            --arg updated "${UPDATED}" \
+            --arg source "${SRC}" \
+            '{
+              gold24k: $gold24,
+              gold22k: $gold22,
+              silver: $silver,
+              updated: $updated,
+              source: $source
+            }' > data/rates.json
 
       - name: Commit & push
         run: |
@@ -159,5 +124,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/rates.json
-          git commit -m "GoldAPI XAU+XAG, 2 runs/weekday, MCX parity (995, duty 6.5%, bank 0.1%)" || echo "No changes"
+          git commit -m "Auto-update simple rates (gold24k,gold22k,silver,updated,source)" || echo "No changes"
           git push
