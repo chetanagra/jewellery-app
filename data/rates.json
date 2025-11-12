@@ -1,7 +1,17 @@
-{
-  "gold24k": 11748,
-  "gold22k": 10769,
-  "silver": 144,
-  "updated": "2025-11-12 10:14 IST",
-  "source": "MetalpriceAPI (spot per gram, INR)"
-}
+  {
+    "gold24k_inr_per_g": 11695.3131,
+    "silver_inr_per_g_999": 145.40818150,
+    "parity": {
+      "purity_used": "995/999",
+      "duty": 0.065,
+      "bank": 0.001,
+      "base_995_inr_per_g": 11648.4849,
+      "landed_per_gram": 12417.28,
+      "landed_per_10g": 124172.85,
+      "landed_per_kg": 12417284.96
+    },
+    "updated": "2025-11-12 11:11 IST",
+    "goldapi_timestamp": 1762926097,
+    "source": "GoldAPI (XAU & XAG)"
+  }
+  JSON
