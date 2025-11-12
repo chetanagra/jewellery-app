@@ -135,23 +135,23 @@ jobs:
           UPDATED=$(TZ=Asia/Kolkata date "+%Y-%m-%d %H:%M IST")
 
           cat > data/rates.json <<JSON
-            {
-              "gold24k_inr_per_g": ${G_INR_G},
-              "silver_inr_per_g_999": ${S_INR_G:-0},
-              "parity": {
-                "purity_used": "${PURITY_NUM}/${PURITY_DEN}",
-                "duty": ${DUTY},
-                "bank": ${BANK},
-                "base_995_inr_per_g": ${BASE_995},
-                "landed_per_gram": ${LANDED_G},
-                "landed_per_10g": ${LANDED_10G},
-                "landed_per_kg": ${LANDED_KG}
-              },
-              "updated": "${UPDATED}",
-              "goldapi_timestamp": ${TS},
-              "source": "GoldAPI (XAU & XAG)"
-            }
-            JSON
+          {
+            "gold24k_inr_per_g": ${G_INR_G},
+            "silver_inr_per_g_999": ${S_INR_G:-0},
+            "parity": {
+              "purity_used": "${PURITY_NUM}/${PURITY_DEN}",
+              "duty": ${DUTY},
+              "bank": ${BANK},
+              "base_995_inr_per_g": ${BASE_995},
+              "landed_per_gram": ${LANDED_G},
+              "landed_per_10g": ${LANDED_10G},
+              "landed_per_kg": ${LANDED_KG}
+            },
+            "updated": "${UPDATED}",
+            "goldapi_timestamp": ${TS},
+            "source": "GoldAPI (XAU & XAG)"
+          }
+          JSON
 
       - name: Commit & push
         run: |
