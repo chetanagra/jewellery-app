@@ -4,8 +4,8 @@
   "source": "Metals.dev (MCX INR/g)",
   "items": [
     {
-      "key": "gold_10k_basic",
-      "label": "10 K GOLD BASIC PRICE (GST & MAKING EXTRA)",
+      "key": "gold_9k_basic",
+      "label": "9 K GOLD BASIC PRICE (GST & MAKING EXTRA)",
       "unit": "10 g",
       "buy": 51045.84,
       "sell": 51045.84
