@@ -1,4 +1,4 @@
-name: Update gold/silver (MCX Metals.dev → rates.json)
+name: Update gold/silver (MCX Metals.dev → rates.json per 10g gold / per kg silver)
 
 on:
   schedule:
@@ -49,66 +49,82 @@ jobs:
           [ -z "$MCX_GOLD" ] && MCX_GOLD=0
           [ -z "$MCX_SILVER" ] && MCX_SILVER=0
 
-          GOLD_SCALE=10
-          SILVER_SCALE=1000
+          # Convert display bases:
+          # gold: show per 10 g (so multiply mcx_gold (INR/g) by 10)
+          # silver: show per 1000 g (1 kg) (so multiply mcx_silver (INR/g) by 1000)
+          GOLD_BASE=$(awk "BEGIN{printf \"%.6f\", $MCX_GOLD * 10}")
+          SILVER_BASE=$(awk "BEGIN{printf \"%.6f\", $MCX_SILVER * 1000}")
+
+          # Units used when emitting items (the compute_line will use these)
+          GOLD_UNIT_G=10
+          SILVER_UNIT_G=1000
 
           mkdir -p data
           rm -f tmp_rate_*.json || true
 
+          # compute_line: base is assumed to already be "per unit" (eg per 10g or per 1000g)
           compute_line() {
             local key="$1"; local label="$2"; local base="$3"; local purity="$4"
-            local scale="$5"; local margin="$6"; local bspread="$7"; local sspread="$8"
-            local rawBase=$(awk "BEGIN{printf \"%.6f\", ($base * ($purity/100) * $scale)}")
-            local mid=$(awk "BEGIN{printf \"%.6f\", ($rawBase * (1 + $margin))}")
-            local buy=$(awk "BEGIN{printf \"%.0f\", ($mid * (1 - $bspread))}")
-            local sell=$(awk "BEGIN{printf \"%.0f\", ($mid * (1 + $sspread))}")
+            local unit_g="$5"; local margin="$6"; local bspread="$7"; local sspread="$8"
+            # rawBase = base * purity%
+            rawBase=$(awk "BEGIN{printf \"%.6f\", ($base * ($purity/100))}")
+            mid=$(awk "BEGIN{printf \"%.6f\", ($rawBase * (1 + $margin))}")
+            buy=$(awk "BEGIN{printf \"%.0f\", ($mid * (1 - $bspread))}")
+            sell=$(awk "BEGIN{printf \"%.0f\", ($mid * (1 + $sspread))}")
             jq -n \
               --arg key "$key" \
               --arg label "$label" \
-              --arg unit "${scale} g" \
+              --arg unit "${unit_g} g" \
+              --argjson raw_base "$(printf "%.0f" "$rawBase")" \
+              --argjson mid "$(printf "%.0f" "$mid")" \
               --argjson buy "$buy" \
               --argjson sell "$sell" \
-              '{key:$key,label:$label,unit:$unit,buy:$buy,sell:$sell}'
+              '{key:$key,label:$label,unit:$unit,raw_base:$raw_base,mid:$mid,buy:$buy,sell:$sell}'
           }
 
-          # --- Base (from MCX)
-          GOLD_BASE=$MCX_GOLD
-          SILVER_BASE=$MCX_SILVER
-
-          # --- Margins / spreads ---
+          # --- Margins / spreads (tweak as needed) ---
           GOLD_99_5_CASH_MARGIN=0.06
           GOLD_99_5_RTGS_MARGIN=0.04
+          GOLD_MAX_MARGIN=0.00   # we're using MCX direct for GOLD MAX (no extra margin)
           SILVER_REFINERY_MARGIN=0.05
           SILVER_999_RTGS_MARGIN=0.035
+          SILVER_MAX_MARGIN=0.00 # using MCX direct for SILVER MAX
           BASIC_MARGIN=0.00
 
-          # --- Compute all items ---
-          compute_line "gold_max" "GOLD MAX (MCX GOLD)" "$GOLD_BASE" 99.5 "$GOLD_SCALE" 0 0 0 > tmp_rate_gold_max.json
-          compute_line "silver_max" "SILVER MAX (MCX SILVER)" "$SILVER_BASE" 99.9 "$SILVER_SCALE" 0 0 0 > tmp_rate_silver_max.json
+          # --- Generate items (GOLD MAX and SILVER MAX should be top) ---
+          compute_line "gold_max" "GOLD MAX (MCX GOLD)" "$GOLD_BASE" 99.5 "$GOLD_UNIT_G" $GOLD_MAX_MARGIN 0 0 > tmp_rate_gold_max.json
+          compute_line "silver_max" "SILVER MAX (MCX SILVER)" "$SILVER_BASE" 99.9 "$SILVER_UNIT_G" $SILVER_MAX_MARGIN 0 0 > tmp_rate_silver_max.json
 
-          compute_line "gold_99_50_cash" "GOLD 99.50 CASH BHAV" "$GOLD_BASE" 99.5 "$GOLD_SCALE" $GOLD_99_5_CASH_MARGIN 0.0025 0.0025 > tmp_rate_gold_9950_cash.json
-          compute_line "gold_99_50_rtgs" "GOLD 99.50 RTGS BHAV 10-20-50 GM" "$GOLD_BASE" 99.5 "$GOLD_SCALE" $GOLD_99_5_RTGS_MARGIN 0.003 0.003 > tmp_rate_gold_9950_rtgs.json
-          compute_line "silver_refinery" "SILVER REFINERY 99 PLUS CASH BHAV" "$SILVER_BASE" 99.0 "$SILVER_SCALE" $SILVER_REFINERY_MARGIN 0.003 0.003 > tmp_rate_silver_refinery.json
-          compute_line "silver_999_cash" "SILVER 999 SILCUT CASH BHAV" "$SILVER_BASE" 99.9 "$SILVER_SCALE" $SILVER_REFINERY_MARGIN 0.003 0.003 > tmp_rate_silver_999_cash.json
-          compute_line "silver_999_rtgs" "SILVER SILCUT 999 RTGS BHAV 1-2-3-5 KG" "$SILVER_BASE" 99.9 "$SILVER_SCALE" $SILVER_999_RTGS_MARGIN 0.0025 0.0025 > tmp_rate_silver_999_rtgs.json
+          compute_line "gold_99_50_cash" "GOLD 99.50 CASH BHAV" "$GOLD_BASE" 99.5 "$GOLD_UNIT_G" $GOLD_99_5_CASH_MARGIN 0.0025 0.0025 > tmp_rate_gold_9950_cash.json
+          compute_line "gold_99_50_rtgs" "GOLD 99.50 RTGS BHAV 10-20-50 GM" "$GOLD_BASE" 99.5 "$GOLD_UNIT_G" $GOLD_99_5_RTGS_MARGIN 0.003 0.003 > tmp_rate_gold_9950_rtgs.json
 
-          # Basic gold prices
+          compute_line "silver_refinery" "SILVER REFINERY 99 PLUS CASH BHAV" "$SILVER_BASE" 99.0 "$SILVER_UNIT_G" $SILVER_REFINERY_MARGIN 0.003 0.003 > tmp_rate_silver_refinery.json
+          compute_line "silver_999_cash" "SILVER 999 SILCUT CASH BHAV" "$SILVER_BASE" 99.9 "$SILVER_UNIT_G" $SILVER_REFINERY_MARGIN 0.003 0.003 > tmp_rate_silver_999_cash.json
+          compute_line "silver_999_rtgs" "SILVER SILCUT 999 RTGS BHAV 1-2-3-5 KG" "$SILVER_BASE" 99.9 "$SILVER_UNIT_G" $SILVER_999_RTGS_MARGIN 0.0025 0.0025 > tmp_rate_silver_999_rtgs.json
+
+          # BASIC GOLD PRICES derived from GOLD_BASE (which is per 10g)
+          # Note: purity factor uses 22/24 etc but base is per 10g so results are per 10g
           G22=$(awk "BEGIN{printf \"%.8f\", $GOLD_BASE * 22/24}")
           G20=$(awk "BEGIN{printf \"%.8f\", $GOLD_BASE * 20/24}")
           G18=$(awk "BEGIN{printf \"%.8f\", $GOLD_BASE * 18/24}")
           G14=$(awk "BEGIN{printf \"%.8f\", $GOLD_BASE * 14/24}")
           G10=$(awk "BEGIN{printf \"%.8f\", $GOLD_BASE * 10/24}")
 
-          compute_line "gold_22k_basic" "22 K GOLD BASIC PRICE (GST & MAKING EXTRA)" "$G22" 100 "$GOLD_SCALE" $BASIC_MARGIN 0 0 > tmp_rate_gold_22.json
-          compute_line "gold_20k_basic" "20 K GOLD BASIC PRICE (GST & MAKING EXTRA)" "$G20" 100 "$GOLD_SCALE" $BASIC_MARGIN 0 0 > tmp_rate_gold_20.json
-          compute_line "gold_18k_basic" "18 K GOLD BASIC PRICE (GST & MAKING EXTRA)" "$G18" 100 "$GOLD_SCALE" $BASIC_MARGIN 0 0 > tmp_rate_gold_18.json
-          compute_line "gold_14k_basic" "14 K GOLD BASIC PRICE (GST & MAKING EXTRA)" "$G14" 100 "$GOLD_SCALE" $BASIC_MARGIN 0 0 > tmp_rate_gold_14.json
-          compute_line "gold_10k_basic" "10 K GOLD BASIC PRICE (GST & MAKING EXTRA)" "$G10" 100 "$GOLD_SCALE" $BASIC_MARGIN 0 0 > tmp_rate_gold_10.json
+          compute_line "gold_22k_basic" "22 K GOLD BASIC PRICE (GST & MAKING EXTRA)" "$G22" 100 "$GOLD_UNIT_G" $BASIC_MARGIN 0 0 > tmp_rate_gold_22.json
+          compute_line "gold_20k_basic" "20 K GOLD BASIC PRICE (GST & MAKING EXTRA)" "$G20" 100 "$GOLD_UNIT_G" $BASIC_MARGIN 0 0 > tmp_rate_gold_20.json
+          compute_line "gold_18k_basic" "18 K GOLD BASIC PRICE (GST & MAKING EXTRA)" "$G18" 100 "$GOLD_UNIT_G" $BASIC_MARGIN 0 0 > tmp_rate_gold_18.json
+          compute_line "gold_14k_basic" "14 K GOLD BASIC PRICE (GST & MAKING EXTRA)" "$G14" 100 "$GOLD_UNIT_G" $BASIC_MARGIN 0 0 > tmp_rate_gold_14.json
+          compute_line "gold_10k_basic" "10 K GOLD BASIC PRICE (GST & MAKING EXTRA)" "$G10" 100 "$GOLD_UNIT_G" $BASIC_MARGIN 0 0 > tmp_rate_gold_10.json
 
-          # Combine all
+          # combine, keeping ordering (we'll put MAX items first explicitly)
+          jq -s '[
+            input_filename | sub("tmp_rate_";"") | . 
+          ]' tmp_rate_*.json >/dev/null 2>&1 || true
+
+          # Simple combine (we'll reorder in jq below)
           jq -s '.' tmp_rate_*.json > data/tmp_rates.json
-          UPDATED=$(TZ=Asia/Kolkata date "+%Y-%m-%d %H:%M IST")
 
+          UPDATED=$(TZ=Asia/Kolkata date "+%Y-%m-%d %H:%M IST")
           jq --arg updated "$UPDATED" \
              --arg source "$SRC" \
              --arg ts "$TS" \
@@ -123,5 +139,5 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add data/rates.json
-          git commit -m "Auto-update Metals.dev MCX rates.json" || echo "No changes"
+          git commit -m "Auto-update MCX rates.json (gold per 10g, silver per kg)" || echo "No changes"
           git push
