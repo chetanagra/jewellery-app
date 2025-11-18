@@ -102,11 +102,11 @@ jobs:
           # SILVER 999 SILCUT CASH
           compute_line "silver_999_cash" "SILVER 999 SILCUT CASH BHAV" "$SILVER_PER_1KG" 99.9 0.03 0.003 0.003 "1 kg" > tmp_rate_silver_cash.json
 
-          # SILVER 999 RTGS (1 KG)
+          # SILVER 999 RTGS
           SILVER_RTGS=$(awk "BEGIN{printf \"%.0f\", ($MCX_SILVER * 1000) * 1.03}") # GST 3%
           jq -n \
             --arg key "silver_999_rtgs" \
-            --arg label "SILVER SILCUT 999 RTGS BHAV 1 KG" \
+            --arg label "SILVER SILCUT 999 RTGS BHAV" \
             --arg unit "1 kg" \
             --argjson buy "$SILVER_RTGS" \
             --argjson sell "$SILVER_RTGS" \
