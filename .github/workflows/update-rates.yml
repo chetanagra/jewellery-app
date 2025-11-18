@@ -115,11 +115,11 @@ jobs:
 
           # BASIC GOLD PRICES (PER GRAM)
           for k in 22 20 18 14 10; do
-            VAL=$(awk "BEGIN{printf \"%.2f\", $MCX_GOLD * ($k/24)}")
+            VAL=$(awk "BEGIN{printf \"%.2f\", $MCX_GOLD * ($k/24) * 10}")
             jq -n \
               --arg key "gold_${k}k_basic" \
               --arg label "${k} K GOLD BASIC PRICE (GST & MAKING EXTRA)" \
-              --arg unit "1 g" \
+              --arg unit "10 g" \
               --argjson buy "$VAL" \
               --argjson sell "$VAL" \
               '{key:$key,label:$label,unit:$unit,buy:$buy,sell:$sell}' \
