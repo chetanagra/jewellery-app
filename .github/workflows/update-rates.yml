@@ -86,7 +86,7 @@ jobs:
           GOLD_995_PER_10G=$(awk "BEGIN{printf \"%.2f\", $GOLD_995_RATE * 10}")
 
           compute_line "gold_99_50_cash" "GOLD 99.50 CASH BHAV" "$GOLD_PER_10G" 99.5 0.06 0.0025 0.0025 "10 g" > tmp_rate_gold_cash.json
-          compute_line "gold_99_50_rtgs" "GOLD 99.50 RTGS BHAV 10-20-50 GM" "$GOLD_995_PER_10G" 100 0.04 0.003 0.003 "10 g" > tmp_rate_gold_rtgs.json
+          compute_line "gold_99_50_rtgs" "GOLD 99.50 RTGS BHAV GM" "$GOLD_995_PER_10G" 100 0.04 0.003 0.003 "10 g" > tmp_rate_gold_rtgs.json
 
           # SILVER REFINERY (per KG)
           SILVER_REFINERY=$(awk "BEGIN{printf \"%.0f\", 1000 * 0.99 * $MCX_SILVER}")
