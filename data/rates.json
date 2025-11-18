@@ -1,49 +1,49 @@
 {
-  "updated": "2025-11-19 01:37 IST",
-  "timestamp": "2025-11-18T20:06:13.501Z",
+  "updated": "2025-11-19 01:44 IST",
+  "timestamp": "2025-11-18T20:12:13.345Z",
   "source": "Metals.dev (MCX INR/g)",
   "items": [
     {
       "key": "gold_10k_basic",
       "label": "10 K GOLD BASIC PRICE (GST & MAKING EXTRA)",
-      "unit": "1 g",
-      "buy": 5104.58,
-      "sell": 5104.58
+      "unit": "10 g",
+      "buy": 51045.84,
+      "sell": 51045.84
     },
     {
       "key": "gold_14k_basic",
       "label": "14 K GOLD BASIC PRICE (GST & MAKING EXTRA)",
-      "unit": "1 g",
-      "buy": 7146.42,
-      "sell": 7146.42
+      "unit": "10 g",
+      "buy": 71464.17,
+      "sell": 71464.17
     },
     {
       "key": "gold_18k_basic",
       "label": "18 K GOLD BASIC PRICE (GST & MAKING EXTRA)",
-      "unit": "1 g",
-      "buy": 9188.25,
-      "sell": 9188.25
+      "unit": "10 g",
+      "buy": 91882.50,
+      "sell": 91882.50
     },
     {
       "key": "gold_20k_basic",
       "label": "20 K GOLD BASIC PRICE (GST & MAKING EXTRA)",
-      "unit": "1 g",
-      "buy": 10209.17,
-      "sell": 10209.17
+      "unit": "10 g",
+      "buy": 102091.67,
+      "sell": 102091.67
     },
     {
       "key": "gold_22k_basic",
       "label": "22 K GOLD BASIC PRICE (GST & MAKING EXTRA)",
-      "unit": "1 g",
-      "buy": 11230.08,
-      "sell": 11230.08
+      "unit": "10 g",
+      "buy": 112300.84,
+      "sell": 112300.84
     },
     {
       "key": "gold_99_50_cash",
       "label": "GOLD 99.50 CASH BHAV",
       "unit": "10 g",
-      "raw_base": 121897.45,
-      "mid": 129211.30,
+      "raw_base": 121897.46,
+      "mid": 129211.31,
       "buy": 128888,
       "sell": 129534
     },
@@ -51,8 +51,8 @@
       "key": "gold_max",
       "label": "GOLD MAX (MCX GOLD)",
       "unit": "10 g",
-      "raw_base": 121897.45,
-      "mid": 121897.45,
+      "raw_base": 121897.46,
+      "mid": 121897.46,
       "buy": 121897,
       "sell": 121897
     },
@@ -60,8 +60,8 @@
       "key": "gold_99_50_rtgs",
       "label": "GOLD 99.50 RTGS BHAV 10-20-50 GM",
       "unit": "10 g",
-      "raw_base": 121897.45,
-      "mid": 126773.35,
+      "raw_base": 121897.46,
+      "mid": 126773.36,
       "buy": 126393,
       "sell": 127154
     },
