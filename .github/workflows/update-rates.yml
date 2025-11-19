@@ -37,11 +37,11 @@ jobs:
           #   --data-urlencode "unit=g")
 
           RESP=$(curl -X GET https://api.metals.dev/v1/metal/authority
-                  ?api_key=${METALS_API_KEY
-                  &authority=mcx
-                  &currency=INR
-                  &unit=g
-                  -H "Accept: application/json")
+                ?api_key=${METALS_API_KEY}
+                &authority=mcx
+                &currency=INR
+                &unit=g
+                -H "Accept: application/json")
           
           echo "$RESP" > /tmp/mcx.json
           echo "mcx_gold=$(jq -r '.rates.mcx_gold' /tmp/mcx.json)" >> $GITHUB_OUTPUT
